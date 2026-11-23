@@ -1,0 +1,32 @@
+[project]
+name = "qwen-shield"
+version = "0.1.0"
+description = "Local, action-aware security for tool-using AI agents, built on a fine-tuned Qwen3 model"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+dependencies = ["pydantic>=2.9", "httpx>=0.27", "openai>=1.50", "fastapi>=0.115", "uvicorn>=0.30"]
+
+[project.optional-dependencies]
+train = ["torch==2.11.0", "transformers>=4.56", "peft>=0.17", "trl>=0.23", "datasets>=3.0", "accelerate>=1.0"]
+dev = ["pytest>=8"]
+
+[tool.uv]
+package = true
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu130" }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["qwen_shield"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
