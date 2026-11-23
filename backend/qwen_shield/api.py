@@ -76,8 +76,7 @@ async def health() -> dict:
 
 @app.get("/api/scenarios")
 def scenarios() -> list[dict]:
-    return [{k: s[k] for k in ("id", "family", "kind", "user_task", "granted")} | {"documents": list(s["documents"])}
-            for s in _scenarios()]
+    return [{k: s[k] for k in ("id", "family", "kind", "user_task", "granted", "documents", "goal", "task")} for s in _scenarios()]
 
 
 class RunRequest(BaseModel):

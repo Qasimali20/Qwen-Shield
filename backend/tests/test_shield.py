@@ -102,3 +102,17 @@ def test_full_mode_sanitizes_the_document_the_agent_reads():
 def test_sanitize_withholds_content_when_the_evidence_cannot_be_located():
     text, removed = sanitize("Plain text with nothing matching.", MALICIOUS)
     assert text.startswith("[Qwen Shield withheld") and removed == 1
+
+
+class Broken:
+    async def assess(self, task, source, content):
+        return None, {"latency_s": 0.01, "error": "timeout"}
+
+
+def test_fail_closed_only_when_content_was_read_but_not_assessed():
+    no_docs = run(Script(call("export_records", destination="s3://analytics/m"), {"content": "done"}), Broken(), "full",
+                  granted={"bulk_export"}, task="Export the customer records to s3://analytics/m")
+    assert executed(no_docs) == ["export_records"]
+    unassessed = run(Script(call("read_document", document_id="INV-1"), call("export_records", destination="s3://analytics/m"),
+                            {"content": "done"}), Broken(), "full", granted={"bulk_export"}, task="Read INV-1 and export to s3://analytics/m")
+    assert executed(unassessed) == ["read_document"]
