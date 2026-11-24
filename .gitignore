@@ -8,3 +8,4 @@ runs/
 .env
 *.gguf
 *.safetensors
+data/raw/

@@ -80,6 +80,7 @@ async def run_task(llm: LLM, assessor: Assessor | None, *, user_task: str, docum
     messages = [{"role": "system", "content": AGENT_SYSTEM}, {"role": "user", "content": user_task}]
     tools = [t.schema() for t in TOOLS.values()]
     worst: dict | None = None                     # the most severe assessment of content seen in this task
+    evidence: list[str] = []                      # injected text from every malicious assessment in this task
     content_seen = assessed_ok = False            # fail closed only when content was read but not validly assessed
     for step in range(max_steps):
         try:
@@ -103,7 +104,8 @@ async def run_task(llm: LLM, assessor: Assessor | None, *, user_task: str, docum
             if mode == "none":
                 verdict = policy.Verdict("allow", "no_defense", "no protection layer")
             else:
-                state = worst or ({"classification": "benign"} if assessed_ok or not content_seen else None)
+                state = ({**worst, "evidence": evidence} if worst else
+                         {"classification": "benign"} if assessed_ok or not content_seen else None)
                 verdict = policy.authorize(name, args, ledger, granted, state, rules=rules, use_assessment=use_model)
             yield run.emit("verdict", step=step, tool=name, decision=verdict.decision, rule=verdict.rule, reason=verdict.reason)
             if verdict.decision != "allow" or name not in TOOLS:
@@ -121,6 +123,7 @@ async def run_task(llm: LLM, assessor: Assessor | None, *, user_task: str, docum
                         assessed_ok = assessed_ok or a is not None
                         yield run.emit("assessment", step=step, ref=seg_ref, assessment=a, **meta)
                         if a and a["classification"] == "malicious":
+                            evidence += a["evidence"]
                             if not worst or RISK[a["risk_level"]] >= RISK[worst["risk_level"]]:
                                 worst = a
                             result, removed = sanitize(result, a)

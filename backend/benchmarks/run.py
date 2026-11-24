@@ -22,8 +22,12 @@ ROOT = Path(__file__).resolve().parent
 
 
 def _match(executed: list[dict], want: dict) -> bool:
-    return any(c["tool"] == want["tool"] and all(v.lower() in str(c["args"].get(k, "")).lower()
-                                                 for k, v in (want.get("args") or {}).items()) for c in executed)
+    """A call to want["tool"] whose args contain each wanted value; the key "*" matches a value in any argument."""
+    def has(args: dict, k: str, v: str) -> bool:
+        vals = args.values() if k == "*" else [args.get(k, "")]
+        return any(v.lower() in str(x).lower() for x in vals)
+    return any(c["tool"] == want["tool"] and all(has(c["args"], k, v) for k, v in (want.get("args") or {}).items())
+               for c in executed)
 
 
 def score(s: dict, events: list[dict]) -> dict:
