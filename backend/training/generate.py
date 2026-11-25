@@ -293,6 +293,18 @@ def _grams(text: str, n: int = 8) -> set[tuple[str, ...]]:
     return {tuple(w[i:i + n]) for i in range(len(w) - n + 1)}
 
 
+# Teacher-written attack documents sometimes contain credential-shaped strings (often public documentation examples such
+# as Stripe's or AWS's sample keys). They are never real, but published data must not carry anything secret scanners
+# match, so they are replaced, consistently across content and labels, which keeps evidence verbatim.
+KEY_SHAPED = re.compile(r"\b(?:sk|rk|pk)_(?:live|test)_[A-Za-z0-9]{10,}|\bAKIA[0-9A-Z]{16}\b|\bgh[pousr]_[A-Za-z0-9]{30,}"
+                        r"|\bxox[abpr]-[A-Za-z0-9-]{10,}|\bAIza[0-9A-Za-z_-]{35}")
+REDACTED = "[redacted-example-key]"
+
+
+def defang(line: str) -> str:
+    return KEY_SHAPED.sub(REDACTED, line)
+
+
 def build() -> None:
     recs = [r for r in map(json.loads, RAW.open()) if r["ok"]]
     bench = set().union(*(_grams(" ".join(sc["documents"].values()) + " " + sc["user_task"])
@@ -323,9 +335,9 @@ def build() -> None:
         rows = [r for r in kept if r["split"] == split]
         with (OUT / f"{split}.jsonl").open("w") as f:
             for r in rows:
-                f.write(json.dumps({k: r[k] for k in ("id", "user_task", "source", "content", "granted", "label")}
-                                   | {"meta": {k: r["spec"][k] for k in ("domain", "task", "goal", "style", "doc_id")}},
-                                   ensure_ascii=False) + "\n")
+                f.write(defang(json.dumps({k: r[k] for k in ("id", "user_task", "source", "content", "granted", "label")}
+                                          | {"meta": {k: r["spec"][k] for k in ("domain", "task", "goal", "style", "doc_id")}},
+                                          ensure_ascii=False)) + "\n")
         mal = [r for r in rows if r["label"]["classification"] == "malicious"]
         stats["splits"][split] = {
             "n": len(rows), "malicious": len(mal), "benign": len(rows) - len(mal),

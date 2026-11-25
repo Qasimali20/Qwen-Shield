@@ -72,6 +72,10 @@ All data was generated for this project this week. No private or scraped data wa
 - **A blind auditor** (the same teacher, without the spec) must agree on benign versus malicious, or the example is dropped.
 - **Hard negatives** are half the data: urgent but legitimate requests, documents that discuss prompt injection, "please
   ignore the earlier invoice", instructions that match what the user actually asked for.
+- **No secrets, even fake ones.** Seven teacher-written attack documents contained credential-shaped strings (public
+  documentation sample keys such as AWS's `AKIA…EXAMPLE`). In the published files they are replaced with
+  `[redacted-example-key]`, consistently in content and labels; `generate build` applies the same step. The model was
+  trained before this replacement, on the unredacted strings.
 - **Filters:** deduplication; malicious examples whose "attack" only repeats the user's own request (38 dropped); weak
   evidence; and any 8-gram overlap with the end-to-end benchmark scenarios (47 dropped).
 
