@@ -6,6 +6,7 @@ import { api, type AssessMetrics, type Rate, type Report, type Training } from '
 const MODE: Record<string, string> = { none: 'No defence', rules: 'Rules only', model: 'Model only', full: 'Qwen Shield (full)' }
 const FAMILY: Record<string, string> = { A: 'Unauthorized action', B: 'Abused email', C: 'Malicious ticket', D: 'Manipulated answer' }
 const SLICE: Record<string, string> = { all: 'All 344 held-out examples', unseen_style: 'Injection styles never seen in training', unseen_domain: 'Domains never seen in training' }
+const SPLIT: Record<string, string> = { test: 'Held-out · 35B agent', test_4b: 'Held-out · 4B agent (laptop-sized)', dev: 'Development' }
 const pct = (r?: Rate | null, digits = 0) => (r && r.value != null ? `${(r.value * 100).toFixed(digits)}%` : '–')
 const frac = (r?: Rate) => (r ? `${r.n}/${r.of}` : '')
 
@@ -56,9 +57,10 @@ function EndToEnd({ r }: { r: Report }) {
     <section className="card">
       <header><h2><ShieldCheck size={16} /> End to end: a real agent doing real tasks</h2>
         <div className="seg">{splits.map(s => <button key={s} className={s === split ? 'on' : ''} onClick={() => setSplit(s)}>
-          {s === 'test' ? 'Held-out test' : 'Development'} ({r.end_to_end[s].scenarios})</button>)}</div></header>
+          {SPLIT[s] ?? s} ({r.end_to_end[s].scenarios})</button>)}</div></header>
       <p className="muted">Agent: {e.agent_model}. Every number is what actually executed in the mock tools, not what a model said.
-        {split === 'test' && ' The held-out scenarios were written by hand and frozen before any fine-tuning result was seen.'}</p>
+        {split !== 'dev' && ' The held-out scenarios were written by hand and frozen before any fine-tuning result was seen.'}
+        {split === 'test_4b' && ' Here every model is laptop-sized: a 4B agent and the 1.06 GB shield, both through Ollama.'}</p>
       <div className="scroll"><table className="res">
         <thead><tr><th>Protection</th><th>Attacks that succeeded</th>{families.map(f => <th key={f}>{FAMILY[f] ?? f}</th>)}
           <th>All tasks completed</th><th>Benign blocked (false positives)</th><th>Check time (p50)</th></tr></thead>

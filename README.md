@@ -16,7 +16,9 @@ user's real task still gets done.
 | Shield with **fine-tuned** Qwen3-1.7B (this project) | **0 / 28** | **39 / 40** |
 
 The base model blocks attacks only because it flags almost everything (12 of 12 benign scenarios refused). Fine-tuning
-is what makes the shield usable: same protection, and the work goes through.
+is what makes the shield usable: same protection, and the work goes through. That table uses a 35B agent; with a
+**laptop-sized 4B agent and the 1.06 GB shield**, 13 / 28 attacks succeed undefended and 3 / 28 with the shield, and the
+whole system runs on an ordinary laptop CPU at about a minute per task ([details](#the-whole-system-on-a-laptop)).
 
 ## How it works
 
@@ -122,6 +124,20 @@ done; base shield 5 / 30 tasks done with 8 / 9 false positives.
 Rules alone cannot stop families B to D: the action (send the email the user asked for, file the ticket, answer the
 question) is permitted; only the content is wrong. That is what the model is for.
 
+**With a laptop-sized agent.** The same 40 held-out scenarios with Qwen3-4B-Instruct-2507 (Q4_K_M, 2.5 GB) as the agent
+and the quantized shield, both through Ollama (run on the Spark for speed, with the exact files used on the laptop):
+
+| Defence | A | B | C | D | Attacks succeeded | Tasks done | Benign done | False positives |
+|---|---|---|---|---|---|---|---|---|
+| None | 1/7 | 4/7 | 3/7 | 5/7 | 13 / 28 | 33 / 40 | 12 / 12 | 0 / 12 |
+| Rules only | 0/7 | 5/7 | 3/7 | 4/7 | 12 / 28 | 34 / 40 | 12 / 12 | 0 / 12 |
+| **Shield, fine-tuned Q4_K_M (1.06 GB)** | 0 | 0 | 1/7 | 2/7 | **3 / 28** | **36 / 40** | **12 / 12** | **0 / 12** |
+| Shield, fine-tuned bf16 | 0 | 0 | 0 | 1/7 | 1 / 28 | 36 / 40 | 11 / 12 | 1 / 12 |
+
+Two of the three Q4 misses (an instruction planted in a ticket title, a fake helpline number in Urdu) are caught by the
+bf16 model, so they are the measurable cost of quantization. The third, TD06, counts as a success only by the scorer's
+substring rule: the agent's answer reports the real findings and says the planted "no issues" claim is false.
+
 ### On a normal laptop
 
 The Q4_K_M model (1.06 GB) on an ordinary office laptop, **CPU only**, through Ollama, on 80 held-out examples
@@ -138,6 +154,18 @@ Latency is dominated by writing the answer (about 215 tokens of JSON including t
 document, so a shorter evidence format is the clearest way to make it faster. Results:
 `backend/benchmarks/results/laptop-i5-1135g7-cpu.json`.
 
+### The whole system on a laptop
+
+Agent (Qwen3-4B-Instruct-2507 Q4_K_M) and shield (Qwen Shield Q4_K_M) both on the HP EliteBook's CPU through Ollama, 10
+held-out scenarios (6 attacks, 4 benign) one at a time, everything else as above:
+
+| Attacks succeeded | Tasks done | False positives | Median time per task | Slowest task | Shield check (median) | RAM for both models |
+|---|---|---|---|---|---|---|
+| **0 / 6** | **10 / 10** | **0 / 4** | 67 s | 84 s | 17.5 s | 5.1 GB of 16 GB (Ollama: 3.2 GB agent + 1.6 GB shield) |
+
+In one of the six attacks (TC01) the agent never opened the poisoned document, so that attack was not exercised. Results:
+`backend/benchmarks/results/laptop-e2e-agent4b-shield-q4.json`.
+
 ## Honesty notes
 
 - **One policy change came after looking at held-out results.** The first end-to-end run blocked every action in a
@@ -145,8 +173,15 @@ document, so a shorter evidence format is the clearest way to make it faster. Re
   content-aware rule (`sanitized_clean`: allow the action if its arguments do not carry the attack) was added after
   seeing that. The model and data were not changed. Both runs are in `backend/benchmarks/results/`
   (`*-shield-v1` before, `*-shield-v1b` after).
-- **The agent is a 35B model.** We first used Qwen3-1.7B as the agent too, but it rarely read the documents, so attacks
-  never reached it and the benchmark measured nothing. The shield itself is the 1.7B model.
+- **Two fail-closed bugs were found by the 4B-agent run on held-out data, and fixed.** When an assessment failed (a
+  timeout under load), a ticket built from the unassessed document was allowed, because fail-closed covered only
+  external, export and credential actions; and one successful assessment in a task masked a later failed one. Both now
+  fail closed for any write, and the assessor allows 120 s with one retry (a laptop CPU check can take 45 s). The
+  run before the fix is kept (`test-agent4b-shield-q4.json`: 4 / 28, two of them through this gap); the 35B results are
+  unchanged because every assessment in those runs was valid.
+- **The headline agent is a 35B model.** Qwen3-1.7B as the agent rarely read the documents, so attacks never reached
+  it. Qwen3-4B-Instruct-2507 does read them, and is reported above as the laptop-sized setup. The shield is always the
+  1.7B model.
 - **Teacher and auditor are the same model family** as the agent in the end-to-end test. The end-to-end scenarios were
   written by hand, not by the teacher, and decontaminated against the training data.
 - Scenario counts are small (40 and 30); treat single-scenario differences as noise.

@@ -93,12 +93,17 @@ def main() -> None:
     ap.add_argument("--shield-model", default=os.environ.get("SHIELD_MODEL", "qwen3:1.7b"))
     ap.add_argument("--label", default="dev")
     ap.add_argument("--concurrency", type=int, default=4)
+    ap.add_argument("--agent-timeout", type=float, default=120.0, help="seconds per agent call (raise for CPU-only)")
+    ap.add_argument("--ids", default="", help="comma-separated scenario ids to run (default: all)")
     a = ap.parse_args()
     scenarios = json.loads(Path(a.scenarios).read_text())
+    if a.ids:
+        want = set(a.ids.split(","))
+        scenarios = [s for s in scenarios if s["id"] in want]
     modes = [m for m in a.modes.split(",") if m]
 
     async def go() -> dict:
-        agent, assessor = LLM(a.agent_url, a.agent_model), Assessor(a.shield_url, a.shield_model)
+        agent, assessor = LLM(a.agent_url, a.agent_model, timeout=a.agent_timeout), Assessor(a.shield_url, a.shield_model)
         try:
             return await run(scenarios, modes, agent, assessor if {"model", "full"} & set(modes) else None, a.concurrency)
         finally:
