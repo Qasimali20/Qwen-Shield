@@ -73,8 +73,8 @@ def authorize(tool: str, args: dict, ledger: Ledger, granted: frozenset[str], as
             if origin != "trusted":
                 where = "untrusted content" if origin == "untrusted" else "nowhere the user said"
                 return Verdict("block", "tainted_argument", f"{a}={args.get(a)!r} comes from {where}")
-        if cap in SENSITIVE and use_assessment and assessment is None:
-            return Verdict("block", "fail_closed", "no valid security assessment for a sensitive action")
+        if cap != READ and use_assessment and assessment is None:     # any write or send built from unchecked content
+            return Verdict("block", "fail_closed", "content read in this task has no valid security assessment")
     # Rules cannot see intent inside a permitted channel (an authorized email that also carries a phishing link, an
     # internal ticket that asks for admin rights): there the assessment decides. The injected text was removed from
     # what the agent read, so the action is blocked when it still carries the attack, and goes through when clean.

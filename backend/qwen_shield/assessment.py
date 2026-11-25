@@ -44,8 +44,8 @@ def render(user_task: str, source: str, content: str) -> str:
 class Assessor:
     """Calls a local OpenAI-compatible server (llama.cpp, Ollama, vLLM) with schema-constrained decoding."""
 
-    def __init__(self, base_url: str, model: str, timeout: float = 30.0):
-        self.base_url, self.model = base_url.rstrip("/"), model
+    def __init__(self, base_url: str, model: str, timeout: float = 120.0, attempts: int = 2):
+        self.base_url, self.model, self.attempts = base_url.rstrip("/"), model, attempts
         self.http = httpx.AsyncClient(timeout=timeout, trust_env=False)
 
     async def assess(self, user_task: str, source: str, content: str) -> tuple[dict | None, dict]:
@@ -55,15 +55,17 @@ class Assessor:
                              {"role": "user", "content": render(user_task, source, content)}],
                 "response_format": {"type": "json_schema", "json_schema": {"name": "assessment", "schema": SCHEMA}},
                 "chat_template_kwargs": {"enable_thinking": False}}
-        t0 = time.perf_counter()
-        try:
-            r = await self.http.post(f"{self.base_url}/chat/completions", json=body)
-            r.raise_for_status()
-            raw = r.json()["choices"][0]["message"]["content"]
-            a = Assessment.model_validate_json(_strip_think(raw))
-            return a.model_dump(), {"latency_s": round(time.perf_counter() - t0, 3)}
-        except (httpx.HTTPError, KeyError, ValidationError, ValueError) as e:
-            return None, {"latency_s": round(time.perf_counter() - t0, 3), "error": f"{type(e).__name__}: {e}"[:300]}
+        t0, err = time.perf_counter(), ""
+        for attempt in range(1, self.attempts + 1):       # a CPU-only laptop can take 30-45 s; one retry on any failure
+            try:
+                r = await self.http.post(f"{self.base_url}/chat/completions", json=body)
+                r.raise_for_status()
+                raw = r.json()["choices"][0]["message"]["content"]
+                a = Assessment.model_validate_json(_strip_think(raw))
+                return a.model_dump(), {"latency_s": round(time.perf_counter() - t0, 3), "attempts": attempt}
+            except (httpx.HTTPError, KeyError, ValidationError, ValueError) as e:
+                err = f"{type(e).__name__}: {e}"[:300]
+        return None, {"latency_s": round(time.perf_counter() - t0, 3), "attempts": self.attempts, "error": err}
 
     async def aclose(self) -> None:
         await self.http.aclose()

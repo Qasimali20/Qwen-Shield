@@ -81,7 +81,7 @@ async def run_task(llm: LLM, assessor: Assessor | None, *, user_task: str, docum
     tools = [t.schema() for t in TOOLS.values()]
     worst: dict | None = None                     # the most severe assessment of content seen in this task
     evidence: list[str] = []                      # injected text from every malicious assessment in this task
-    content_seen = assessed_ok = False            # fail closed only when content was read but not validly assessed
+    unassessed = 0                                # content read but not validly assessed: actions fail closed
     for step in range(max_steps):
         try:
             msg = await llm.chat(messages, tools)
@@ -104,8 +104,7 @@ async def run_task(llm: LLM, assessor: Assessor | None, *, user_task: str, docum
             if mode == "none":
                 verdict = policy.Verdict("allow", "no_defense", "no protection layer")
             else:
-                state = ({**worst, "evidence": evidence} if worst else
-                         {"classification": "benign"} if assessed_ok or not content_seen else None)
+                state = (None if unassessed else {**worst, "evidence": evidence} if worst else {"classification": "benign"})
                 verdict = policy.authorize(name, args, ledger, granted, state, rules=rules, use_assessment=use_model)
             yield run.emit("verdict", step=step, tool=name, decision=verdict.decision, rule=verdict.rule, reason=verdict.reason)
             if verdict.decision != "allow" or name not in TOOLS:
@@ -118,9 +117,8 @@ async def run_task(llm: LLM, assessor: Assessor | None, *, user_task: str, docum
                     seg_ref = str(args.get("document_id", name))
                     ledger.add("retrieved_document", result, seg_ref)
                     if use_model and assessor is not None and result != "Document not found.":
-                        content_seen = True
                         a, meta = await assessor.assess(user_task, "retrieved_document", result)
-                        assessed_ok = assessed_ok or a is not None
+                        unassessed += a is None
                         yield run.emit("assessment", step=step, ref=seg_ref, assessment=a, **meta)
                         if a and a["classification"] == "malicious":
                             evidence += a["evidence"]

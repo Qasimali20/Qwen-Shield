@@ -130,6 +130,33 @@ class Broken:
         return None, {"latency_s": 0.01, "error": "timeout"}
 
 
+def test_writes_fail_closed_too_without_an_assessment():
+    led = Ledger(); led.add("user", "Open a ticket for INV-1")
+    v = policy.authorize("create_ticket", {"title": "t", "body": "b"}, led, frozenset(), None)
+    assert (v.decision, v.rule) == ("block", "fail_closed")
+    assert policy.authorize("read_document", {"document_id": "INV-1"}, led, frozenset(), None).decision == "allow"
+
+
+class Flaky:
+    """Assesses the first document, fails on the next."""
+    def __init__(self):
+        self.calls = 0
+
+    async def assess(self, task, source, content):
+        self.calls += 1
+        return ({"classification": "benign"} if self.calls == 1 else None), {"latency_s": 0.01}
+
+
+def test_one_unassessed_document_fails_closed_even_after_a_good_one():
+    async def go():
+        return [e async for e in run_task(
+            Script(call("read_document", document_id="A"), call("read_document", document_id="B"),
+                   call("create_ticket", title="t", body="b"), {"content": "done"}),
+            Flaky(), user_task="Read A and B and open a ticket.", documents={"A": "fine", "B": "unchecked"},
+            granted=frozenset(), mode="full")]
+    assert executed(asyncio.run(go())) == ["read_document", "read_document"]
+
+
 def test_fail_closed_only_when_content_was_read_but_not_assessed():
     no_docs = run(Script(call("export_records", destination="s3://analytics/m"), {"content": "done"}), Broken(), "full",
                   granted={"bulk_export"}, task="Export the customer records to s3://analytics/m")
