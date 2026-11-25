@@ -1,0 +1,76 @@
+{
+ "args": {
+  "epochs": 3.0,
+  "lr": 0.0002,
+  "rank": 16,
+  "alpha": 32,
+  "dropout": 0.05,
+  "tokens_per_batch": 8192,
+  "max_len": 2560,
+  "evals_per_epoch": 2,
+  "seed": 13,
+  "mem_fraction": 0.2,
+  "hot": 68,
+  "resume": 60,
+  "base": "Qwen3-1.7B"
+ },
+ "train_examples": 1560,
+ "val_examples": 124,
+ "best_val_loss": 0.0733,
+ "steps": 225,
+ "log": [
+  {
+   "step": 37,
+   "epoch": 0.49,
+   "train_loss": 0.145,
+   "val_loss": 0.1232,
+   "elapsed_s": 468
+  },
+  {
+   "step": 74,
+   "epoch": 0.99,
+   "train_loss": 0.0003,
+   "val_loss": 0.094,
+   "elapsed_s": 922
+  },
+  {
+   "step": 111,
+   "epoch": 1.48,
+   "train_loss": 0.0918,
+   "val_loss": 0.0814,
+   "elapsed_s": 1363
+  },
+  {
+   "step": 148,
+   "epoch": 1.97,
+   "train_loss": 0.0935,
+   "val_loss": 0.0749,
+   "elapsed_s": 1794
+  },
+  {
+   "step": 185,
+   "epoch": 2.47,
+   "train_loss": 0.028,
+   "val_loss": 0.074,
+   "elapsed_s": 2210
+  },
+  {
+   "step": 222,
+   "epoch": 2.96,
+   "train_loss": 0.0757,
+   "val_loss": 0.0733,
+   "elapsed_s": 2621
+  },
+  {
+   "step": 225,
+   "epoch": 3.0,
+   "train_loss": 0.0573,
+   "val_loss": 0.0733,
+   "elapsed_s": 2671
+  }
+ ],
+ "thermal_pause_s": 1280,
+ "peak_gpu_mem_gib": 9.0,
+ "wall_s": 2671,
+ "gpu": "NVIDIA GB10"
+}

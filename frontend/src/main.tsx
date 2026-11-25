@@ -16,6 +16,7 @@ function Status() {
   return <div className="status">
     <span className={data.agent.ok ? 'up' : 'down'}>agent · {data.agent.model}</span>
     <span className={data.shield.ok ? 'up' : 'down'}>shield · {data.shield.model}</span>
+    {data.base_shield && <span className={data.base_shield.ok ? 'up' : 'down'}>base · {data.base_shield.model}</span>}
   </div>
 }
 
