@@ -42,6 +42,11 @@ export type Report = {
   assessment: { examples: number | null; rows: ({ key: string; label: string } & Partial<Record<'all' | 'unseen_style' | 'unseen_domain', AssessMetrics>>)[] }
   laptop: LaptopRun[]
   training: Training | null
+  external: External | null
+}
+export type External = {
+  meta: { benchmark: string; attacks: number; benign_control: number }
+  models: Record<string, Record<'all_attacks' | 'benign_control', Partial<Record<'flagged' | 'evidence_exact' | 'removed_rest_kept', Rate>>>>
 }
 
 export type Session = { required: boolean; signed_in: boolean; user: string | null }

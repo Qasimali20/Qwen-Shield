@@ -30,6 +30,7 @@ ASSESSMENT = [("base", "Base Qwen3-1.7B", "assess-base", "qwen3-1.7b"),
 SLICES = ("all", "unseen_style", "unseen_domain")
 LAPTOP = [("laptop", "laptop-i5-1135g7-cpu"), ("reference", "laptop-bench-node2-cpu")]
 TRAINING = "training-shield-v1"
+EXTERNAL = "injecagent-bf16"     # public benchmark, see benchmarks/injecagent_eval.py
 
 
 def _load(results: Path, name: str) -> dict | None:
@@ -67,7 +68,7 @@ def _build(results: Path, stamp: float) -> dict:
                            "model_load_s": d["model_load_s"], "peak_rss_mb": d["runner_peak_rss_mb"], "at": d["at"]})
 
     return {"end_to_end": e2e, "assessment": {"examples": examples, "rows": assess}, "laptop": laptop,
-            "training": _load(results, TRAINING)}
+            "training": _load(results, TRAINING), "external": _load(results, EXTERNAL)}
 
 
 def report(results: Path) -> dict:

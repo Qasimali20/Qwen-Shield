@@ -37,9 +37,22 @@ function SignIn({ onDone }: { onDone: () => void }) {
   }
   return (
     <div className="signin">
+      <aside className="signin-hero">
+        <Brand />
+        <div>
+          <h1>Stop AI agents from obeying <span className="grad">hidden instructions.</span></h1>
+          <p>A fine-tuned Qwen3-1.7B finds the sentence an attacker planted in a document, cuts it out, and lets the real work through.
+            It runs on your own hardware.</p>
+        </div>
+        <div className="signin-stats">
+          <div><b>0 / 28</b><span>attacks got through on held-out agent scenarios</span></div>
+          <div><b>92.8%</b><span>of 1,054 attacks caught on the public InjecAgent benchmark</span></div>
+          <div><b>CPU only</b><span>the whole system runs on an ordinary laptop</span></div>
+        </div>
+      </aside>
       <form onSubmit={submit} className="signin-card">
-        <div className="brand"><ShieldCheck size={26} /> Qwen Shield</div>
-        <p className="muted">Local security for AI agents. Sign in to open the console.</p>
+        <h2>Sign in</h2>
+        <p className="muted">Open the Qwen Shield console.</p>
         <label htmlFor="user">Username</label>
         <input id="user" autoComplete="username" autoFocus value={username} onChange={e => setUsername(e.target.value)} />
         <label htmlFor="pass">Password</label>
@@ -49,6 +62,10 @@ function SignIn({ onDone }: { onDone: () => void }) {
       </form>
     </div>
   )
+}
+
+function Brand() {
+  return <div className="brand"><span className="mark"><ShieldCheck size={18} /></span><span className="word">Qwen Shield</span></div>
 }
 
 function Gate() {
@@ -65,7 +82,7 @@ function App({ signOut }: { signOut?: () => void }) {
   return (
     <div className="shell">
       <header className="top">
-        <div className="brand"><ShieldCheck size={20} /> Qwen Shield <small>local security for AI agents</small></div>
+        <Brand />
         <nav>
           <NavLink to="/" end><Swords size={15} /> Live demo</NavLink>
           <NavLink to="/results"><BarChart3 size={15} /> Results</NavLink>

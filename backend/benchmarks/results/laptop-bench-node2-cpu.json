@@ -2,11 +2,11 @@
  "hardware": {
   "os": "Linux 6.17.0-1026-nvidia",
   "arch": "aarch64",
-  "host": "spark-46ef",
+  "host": "workstation",
   "cpu": "Cortex-X925 + Cortex-A725",
   "cores": "20",
   "ram_gb": 121.7,
-  "gpu": "NVIDIA GB10, [N/A]",
+  "gpu": "NVIDIA GPU (not used: CPU-only run)",
   "ollama": "ollama version is 0.31.2"
  },
  "mode": "cpu-forced",

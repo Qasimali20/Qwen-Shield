@@ -72,5 +72,5 @@
  "thermal_pause_s": 1280,
  "peak_gpu_mem_gib": 9.0,
  "wall_s": 2671,
- "gpu": "NVIDIA GB10"
+ "gpu": "NVIDIA GPU (single-GPU workstation)"
 }

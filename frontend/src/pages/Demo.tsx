@@ -75,7 +75,7 @@ function Lane({ title, mode, tone, events, running, scenario }: { title: string;
       : { tone: 'warn', icon: <ShieldAlert size={18} />, text: blocked ? `Normal work was blocked (${blocked})` : 'Task not done' })
   return (
     <section className={`lane ${tone}`}>
-      <header><h2>{mode === 'none' ? <Bot size={16} /> : <ShieldCheck size={16} />}{title}</h2>{running && <Loader2 size={16} className="spin" />}</header>
+      <header><h2><span className="lane-icon">{mode === 'none' ? <Bot size={16} /> : <ShieldCheck size={16} />}</span>{title}</h2>{running && <Loader2 size={16} className="spin" />}</header>
       {verdict && <div className={`outcome ${verdict.tone}`}>{verdict.icon}{verdict.text}</div>}
       <ol className="steps">{events.map(e => <Step key={e.seq} e={e} goal={scenario?.goal} />)}</ol>
       {!events.length && <p className="muted">Waiting to start.</p>}
@@ -118,11 +118,19 @@ export default function Demo() {
 
   return (
     <>
-      <div className="intro">
-        <h1>Same task, same poisoned document, {keys.length === 3 ? 'three' : 'two'} agents</h1>
-        <p className="muted">The same agent runs the task unprotected and behind Qwen Shield
-          {shown3 ? ', once with the untrained base model as the assessor and once with the fine-tuned one' : ''}. Everything runs locally.</p>
-      </div>
+      <section className="page-hero">
+        <div>
+          <div className="eyebrow">Live demo</div>
+          <h1>Same task. Same poisoned document. <span className="grad">{keys.length === 3 ? 'Three' : 'Two'} agents.</span></h1>
+          <p className="muted">The same agent runs the task unprotected and behind Qwen Shield
+            {shown3 ? ', once with the untrained base model as the assessor and once with the fine-tuned one' : ''}. Everything runs locally.</p>
+        </div>
+        <div className="kpis">
+          <div><b>0 / 28</b><span>attacks succeeded</span></div>
+          <div><b>39 / 40</b><span>tasks still done</span></div>
+          <div><b>92.8%</b><span>caught on InjecAgent</span></div>
+        </div>
+      </section>
       <div className="picker">
         <div className="tabs"><button className={!custom ? 'on' : ''} onClick={() => setCustom(false)}>Scenarios</button>
           <button className={custom ? 'on' : ''} onClick={() => setCustom(true)}>Your own document</button></div>

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Cpu, FlaskConical, Info, Laptop, ShieldCheck, TrendingDown } from 'lucide-react'
-import { api, type AssessMetrics, type Rate, type Report, type Training } from '../api'
+import { Cpu, FlaskConical, Globe, Info, Laptop, ShieldCheck, TrendingDown } from 'lucide-react'
+import { api, type AssessMetrics, type External, type Rate, type Report, type Training } from '../api'
 
 const MODE: Record<string, string> = { none: 'No defence', rules: 'Rules only', model: 'Model only', full: 'Qwen Shield (full)' }
 const FAMILY: Record<string, string> = { A: 'Unauthorized action', B: 'Abused email', C: 'Malicious ticket', D: 'Manipulated answer' }
@@ -153,7 +153,7 @@ function TrainingCard({ t }: { t: Training }) {
           <div><dt>Method</dt><dd>LoRA r={t.args.rank}, α={t.args.alpha}, all projections</dd></div>
           <div><dt>Data</dt><dd>{t.train_examples.toLocaleString()} train · {t.val_examples} validation</dd></div>
           <div><dt>Steps</dt><dd>{t.steps} ({t.args.epochs} epochs, lr {t.args.lr})</dd></div>
-          <div><dt>Time</dt><dd>{min(t.wall_s)} on one {t.gpu}, incl. {min(t.thermal_pause_s)} cooling pauses</dd></div>
+          <div><dt>Time</dt><dd>{min(t.wall_s)} on one NVIDIA GPU, incl. {min(t.thermal_pause_s)} cooling pauses</dd></div>
           <div><dt>Peak GPU memory</dt><dd>{t.peak_gpu_mem_gib} GiB (loss on answer tokens only)</dd></div>
           <div><dt>Best validation loss</dt><dd>{t.best_val_loss}</dd></div>
         </dl>
@@ -185,23 +185,47 @@ function AllRuns() {
   )
 }
 
+function ExternalCard({ x }: { x: External }) {
+  const rows = [['qwen3-1.7b', 'Base Qwen3-1.7B'], ['qwen-shield', 'Qwen Shield (fine-tuned)']] as const
+  return (
+    <section className="card">
+      <header><h2><Globe size={16} /> On a public benchmark: InjecAgent</h2></header>
+      <p className="muted">{x.meta.attacks.toLocaleString('en-US')} attacks hidden in what tools return to an agent (Zhan et al., ACL Findings 2024),
+        never used in training. The benchmark has no benign cases, so the false-alarm column uses the same {x.meta.benign_control} tool
+        outputs with the attack replaced by an ordinary sentence, a control we added.</p>
+      <div className="scroll"><table className="res">
+        <thead><tr><th>Model</th><th>Attacks flagged</th><th>Exact attack sentence quoted</th><th>Attack cut, rest of output kept</th><th>Innocent control flagged</th></tr></thead>
+        <tbody>{rows.filter(([k]) => x.models[k]).map(([k, label]) => { const m = x.models[k]; return (
+          <tr key={k} className={k === 'qwen-shield' ? 'hl' : ''}><td><b>{label}</b></td>
+            <td><Bar r={m.all_attacks.flagged} good="high" /></td><td><Bar r={m.all_attacks.evidence_exact} good="high" /></td>
+            <td><Bar r={m.all_attacks.removed_rest_kept} good="high" /></td><td><Bar r={m.benign_control.flagged} good="low" /></td></tr>) })}</tbody>
+      </table></div>
+      <p className="note"><Info size={14} /> InjecAgent's tool outputs are single-line JSON, so the sentence-level sanitizer usually withholds the
+        whole output rather than only the attack. Cutting just the attacked JSON field is the next step.</p>
+    </section>
+  )
+}
+
 export function Results() {
   const { data, error } = useQuery({ queryKey: ['report'], queryFn: api.report })
   if (error) return <p className="bad">{String(error)}</p>
   if (!data) return <p className="muted">Loading…</p>
   return (
     <>
-      <div className="intro"><h1>Fine-tuning Qwen3-1.7B into a security assessor</h1>
+      <div className="intro"><div className="eyebrow">Results</div><h1>Fine-tuning Qwen3-1.7B into a security assessor</h1>
         <p className="muted">Before and after, on data and scenarios the model never saw in training.</p></div>
       <Hero r={data} />
       <EndToEnd r={data} />
       <Assessment r={data} />
+      {data.external && <ExternalCard x={data.external} />}
       <div className="two"><LaptopCard r={data} />{data.training && <TrainingCard t={data.training} />}</div>
       <section className="card honest"><header><h2><Info size={16} /> Honesty notes</h2></header><ul>
         <li>One policy rule came after looking at held-out results: inside a channel the user granted, an action is now blocked only if its
           arguments carry the attack. The model and data were not changed. Both runs are saved (<code>*-shield-v1</code> before,
           <code>*-shield-v1b</code> after).</li>
         <li>The headline agent is a larger Qwen model. A 1.7B agent rarely read the documents, so attacks never reached it. The shield is the 1.7B model.</li>
+        <li>A sanitizer bug was found with the Pakistan examples and fixed: Urdu, Arabic and Chinese full stops were not sentence breaks. Rerunning the five held-out scenarios that contain them changed no reported number.</li>
+        <li>Known false alarm: an ordinary all-Urdu exam notice (Pakistan example PK03) is flagged.</li>
         <li>Scenario counts are small (40 and 30); treat single-scenario differences as noise.</li></ul></section>
       <AllRuns />
     </>
@@ -212,7 +236,7 @@ export function Audit() {
   const { data } = useQuery({ queryKey: ['audit'], queryFn: api.audit, refetchInterval: 3000 })
   return (
     <>
-      <div className="intro"><h1>Audit trail</h1><p className="muted">Every assessment, decision and executed action, newest first.</p></div>
+      <div className="intro"><div className="eyebrow">Audit</div><h1>Audit trail</h1><p className="muted">Every assessment, decision and executed action, newest first.</p></div>
       <div className="scroll"><table className="res"><thead><tr><th>Time</th><th>Run</th><th>Event</th><th>Detail</th></tr></thead>
         <tbody>{(data ?? []).map(e => <tr key={`${e.run}-${e.seq}`}>
           <td className="mono">{new Date(e.t * 1000).toLocaleTimeString()}</td><td className="mono">{e.run}</td>
