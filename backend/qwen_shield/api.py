@@ -10,20 +10,26 @@
 
 Models are local OpenAI-compatible servers configured by environment: AGENT_URL / AGENT_MODEL for the agent,
 SHIELD_URL / SHIELD_MODEL for the fine-tuned assessor, and optionally SHIELD_BASE_MODEL (same server) for the untuned
-base model, so the console can show both side by side."""
+base model, so the console can show both side by side.
+
+Set QS_PASSWORD to require a login (HTTP Basic, user QS_USER, default "qwen") for every page and API call; do this
+before serving the console beyond localhost. Unset, the console is open, as for a local demo."""
 from __future__ import annotations
 
 import asyncio
+import base64
+import binascii
 import json
 import os
+import secrets
 from collections import deque
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Literal
 
 import httpx
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse, PlainTextResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -65,6 +71,26 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Qwen Shield", lifespan=lifespan, docs_url="/api/docs", openapi_url="/api/openapi.json")
+
+
+def _authorized(header: str, user: str, password: str) -> bool:
+    """HTTP Basic credentials match, compared in constant time."""
+    scheme, _, value = header.partition(" ")
+    if scheme.lower() != "basic":
+        return False
+    try:
+        u, _, pw = base64.b64decode(value, validate=True).decode().partition(":")
+    except (binascii.Error, UnicodeDecodeError):
+        return False
+    return secrets.compare_digest(u.encode(), user.encode()) & secrets.compare_digest(pw.encode(), password.encode())
+
+
+@app.middleware("http")
+async def require_login(request: Request, call_next):
+    password = os.environ.get("QS_PASSWORD", "")
+    if password and not _authorized(request.headers.get("authorization", ""), os.environ.get("QS_USER", "qwen"), password):
+        return PlainTextResponse("Login required", status_code=401, headers={"WWW-Authenticate": 'Basic realm="Qwen Shield"'})
+    return await call_next(request)
 
 
 _SCENARIO_CACHE: dict[str, tuple[float, list[dict]]] = {}
