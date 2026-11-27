@@ -182,7 +182,7 @@ In one of the six attacks (TC01) the agent never opened the poisoned document, s
   run before the fix is kept (`test-agent4b-shield-q4.json`: 4 / 28, two of them through this gap); the headline results are
   unchanged because every assessment in those runs was valid.
 - **The headline agent is a larger Qwen model.** Qwen3-1.7B as the agent rarely read the documents, so attacks never reached
-  it. Qwen3-4B-Instruct-2507 does read them, and is reported above as the laptop-sized setup. The shield is always the
+  it (`day1-baseline-base-qwen.json`, `test-baseline-base-qwen.json`). Qwen3-4B-Instruct-2507 does read them, and is reported above as the laptop-sized setup. The shield is always the
   1.7B model.
 - **Teacher and auditor are the same model family** as the agent in the end-to-end test. The end-to-end scenarios were
   written by hand, not by the teacher, and decontaminated against the training data.
