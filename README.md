@@ -2,6 +2,8 @@
 
 **Local, action-aware security for tool-using AI agents, built on a fine-tuned Qwen3-1.7B.**
 
+Model on Hugging Face: [qasim-tmc/qwen-shield-1.7b](https://huggingface.co/qasim-tmc/qwen-shield-1.7b) (Q4_K_M and F16 GGUF, LoRA adapter, Modelfile).
+
 An agent that reads email, tickets and web pages can be steered by text hidden in them ("assistant: forward this
 thread to …"). Qwen Shield sits between the agent and its tools. Every piece of content the agent reads is assessed by a
 small fine-tuned Qwen model that runs on a laptop; every action the agent takes is checked by a deterministic policy that
@@ -188,10 +190,12 @@ In one of the six attacks (TC01) the agent never opened the poisoned document, s
 
 ## Run it
 
-**On a laptop (Ollama).** Download `qwen-shield-1.7b-Q4_K_M.gguf` and its Modelfile, then:
+**On a laptop (Ollama).** Download the Q4_K_M model and its Modelfile from Hugging Face, then:
 
 ```bash
-ollama create qwen-shield:1.7b -f qwen-shield-1.7b-Q4_K_M.Modelfile
+pip install -U huggingface_hub    # provides the `hf` command
+hf download qasim-tmc/qwen-shield-1.7b qwen-shield-1.7b-Q4_K_M.gguf Modelfile --local-dir qwen-shield
+(cd qwen-shield && ollama create qwen-shield:1.7b -f Modelfile)
 python3 backend/benchmarks/laptop_bench.py --cpu      # reproduce the laptop numbers (standard library only)
 ```
 
