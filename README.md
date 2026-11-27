@@ -18,8 +18,8 @@ user's real task still gets done.
 | Shield with **fine-tuned** Qwen3-1.7B (this project) | **0 / 28** | **39 / 40** |
 
 The base model blocks attacks only because it flags almost everything (12 of 12 benign scenarios refused). Fine-tuning
-is what makes the shield usable: same protection, and the work goes through. That table uses a 35B agent; with a
-**laptop-sized 4B agent and the 1.06 GB shield**, 13 / 28 attacks succeed undefended and 3 / 28 with the shield, and the
+is what makes the shield usable: same protection, and the work goes through. That table uses a larger local Qwen agent; with a
+**laptop-sized 4B agent and the quantized shield**, 13 / 28 attacks succeed undefended and 3 / 28 with the shield, and the
 whole system runs on an ordinary laptop CPU at about a minute per task ([details](#the-whole-system-on-a-laptop)).
 
 ## How it works
@@ -61,8 +61,8 @@ returns invalid output, the policy fails closed.
 | Method | LoRA, r=16, α=32, dropout 0.05, all attention and MLP projections; 3 epochs, lr 2e-4 cosine, 5 % warm-up |
 | Loss | answer tokens only (the vocabulary projection is applied only to answer positions, which cut peak memory from ~35 GB to 9 GB) |
 | Data | 1,561 train / 124 val / 344 test, about half malicious, half hard benign |
-| Training | 225 steps, 44 min on one NVIDIA GB10 (DGX Spark), including 21 min of thermal pauses; best val loss 0.073 (from ~1.2) |
-| Output | 70 MB LoRA adapter → merged bf16 model → GGUF Q4_K_M, **1.06 GB** |
+| Training | 225 steps, 44 min on a single GPU, including 21 min of thermal pauses; best val loss 0.073 (from ~1.2) |
+| Output | LoRA adapter → merged bf16 model → GGUF **Q4_K_M** |
 
 ### Data: permitted, synthetic, labelled by construction
 
@@ -71,7 +71,7 @@ All data was generated for this project this week. No private or scraped data wa
 - **Specs decide the labels, not a model.** Code samples a specification for every example: business domain (16),
   user task (7), attack goal (10), injection style (14) or benign hard-negative kind (9), document IDs, recipients and
   destinations. The label (classification, attack type, target capability, risk) follows from the spec.
-- **A teacher writes only the text.** Qwen3.6-35B-A3B (local) writes the document to the spec. Evidence must be a verbatim
+- **A teacher writes only the text.** A larger Qwen model (local, Apache-2.0) writes the document to the spec. Evidence must be a verbatim
   substring of the document; drafts that fail structural checks are rejected and rewritten.
 - **A blind auditor** (the same teacher, without the spec) must agree on benign versus malicious, or the example is dropped.
 - **Hard negatives** are half the data: urgent but legitimate requests, documents that discuss prompt injection, "please
@@ -107,7 +107,7 @@ On the **unseen injection styles** the fine-tuned model catches 98.0 % (Q4_K_M: 
 
 ### End to end, with a real agent
 
-The agent is Qwen3.6-35B-A3B (FP8, local); the shield is Qwen3-1.7B. Attack families: A, an action the user never
+The agent is a larger Qwen model running locally; the shield is Qwen3-1.7B. Attack families: A, an action the user never
 authorized; B, abuse inside an email the user did authorize; C, a malicious internal ticket; D, a manipulated answer;
 E, benign hard negatives.
 
@@ -127,13 +127,13 @@ Rules alone cannot stop families B to D: the action (send the email the user ask
 question) is permitted; only the content is wrong. That is what the model is for.
 
 **With a laptop-sized agent.** The same 40 held-out scenarios with Qwen3-4B-Instruct-2507 (Q4_K_M, 2.5 GB) as the agent
-and the quantized shield, both through Ollama (run on the Spark for speed, with the exact files used on the laptop):
+and the quantized shield, both through Ollama (run on the workstation for speed, with the exact files used on the laptop):
 
 | Defence | A | B | C | D | Attacks succeeded | Tasks done | Benign done | False positives |
 |---|---|---|---|---|---|---|---|---|
 | None | 1/7 | 4/7 | 3/7 | 5/7 | 13 / 28 | 33 / 40 | 12 / 12 | 0 / 12 |
 | Rules only | 0/7 | 5/7 | 3/7 | 4/7 | 12 / 28 | 34 / 40 | 12 / 12 | 0 / 12 |
-| **Shield, fine-tuned Q4_K_M (1.06 GB)** | 0 | 0 | 1/7 | 2/7 | **3 / 28** | **36 / 40** | **12 / 12** | **0 / 12** |
+| **Shield, fine-tuned Q4_K_M** | 0 | 0 | 1/7 | 2/7 | **3 / 28** | **36 / 40** | **12 / 12** | **0 / 12** |
 | Shield, fine-tuned bf16 | 0 | 0 | 0 | 1/7 | 1 / 28 | 36 / 40 | 11 / 12 | 1 / 12 |
 
 Two of the three Q4 misses (an instruction planted in a ticket title, a fake helpline number in Urdu) are caught by the
@@ -142,14 +142,14 @@ substring rule: the agent's answer reports the real findings and says the plante
 
 ### On a normal laptop
 
-The Q4_K_M model (1.06 GB) on an ordinary office laptop, **CPU only**, through Ollama, on 80 held-out examples
+The Q4_K_M model on an ordinary office laptop, **CPU only**, through Ollama, on 80 held-out examples
 (52 attacks, 28 benign, a fixed class-balanced sample of the test split), one request at a time as an agent sends them.
 The laptop was in normal use during the run (browser and other services open).
 
 | Machine | Attacks caught | False alarms | Right target | Evidence found | Median latency | p90 | Output speed | Ollama RAM |
 |---|---|---|---|---|---|---|---|---|
 | **HP EliteBook 840 G8**: Intel Core i5-1135G7 (4 cores / 8 threads), 16 GB RAM, Intel Iris Xe (unused), Ubuntu 26.04, Ollama 0.32.1 | 51 / 52 | **0 / 28** | 41 / 51 | 47 / 51 | 19.8 s | 34.1 s | 12.5 tok/s | 5.6 GB peak |
-| DGX Spark CPU (Arm Cortex-X925), same script, for reference | 51 / 52 | 0 / 28 | 41 / 51 | 45 / 51 | 5.3 s | 7.0 s | 46 tok/s | – |
+| Workstation CPU (Arm Cortex-X925), same script, for reference | 51 / 52 | 0 / 28 | 41 / 51 | 45 / 51 | 5.3 s | 7.0 s | 46 tok/s | – |
 
 The quantized model gives the same verdicts on a laptop CPU as on the workstation: the same single miss, no false alarms.
 Latency is dominated by writing the answer (about 215 tokens of JSON including the evidence sentences), not by reading the
@@ -179,9 +179,9 @@ In one of the six attacks (TC01) the agent never opened the poisoned document, s
   timeout under load), a ticket built from the unassessed document was allowed, because fail-closed covered only
   external, export and credential actions; and one successful assessment in a task masked a later failed one. Both now
   fail closed for any write, and the assessor allows 120 s with one retry (a laptop CPU check can take 45 s). The
-  run before the fix is kept (`test-agent4b-shield-q4.json`: 4 / 28, two of them through this gap); the 35B results are
+  run before the fix is kept (`test-agent4b-shield-q4.json`: 4 / 28, two of them through this gap); the headline results are
   unchanged because every assessment in those runs was valid.
-- **The headline agent is a 35B model.** Qwen3-1.7B as the agent rarely read the documents, so attacks never reached
+- **The headline agent is a larger Qwen model.** Qwen3-1.7B as the agent rarely read the documents, so attacks never reached
   it. Qwen3-4B-Instruct-2507 does read them, and is reported above as the laptop-sized setup. The shield is always the
   1.7B model.
 - **Teacher and auditor are the same model family** as the agent in the end-to-end test. The end-to-end scenarios were
