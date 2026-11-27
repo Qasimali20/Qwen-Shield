@@ -57,11 +57,11 @@ returns invalid output, the policy fails closed.
 
 | | |
 |---|---|
-| Base model | Qwen3-1.7B (Apache-2.0), thinking disabled |
+| Base model | Qwen3-1.7B (Apache-2.0), revision `70d244cc86ccca08cf5af4e1e306ecf908b1ad5e`, thinking disabled |
 | Method | LoRA, r=16, α=32, dropout 0.05, all attention and MLP projections; 3 epochs, lr 2e-4 cosine, 5 % warm-up |
 | Loss | answer tokens only (the vocabulary projection is applied only to answer positions, which cut peak memory from ~35 GB to 9 GB) |
 | Data | 1,561 train / 124 val / 344 test, about half malicious, half hard benign |
-| Training | 225 steps, 44 min on a single GPU, including 21 min of thermal pauses; best val loss 0.073 (from ~1.2) |
+| Training | 225 steps on one NVIDIA GPU (single-GPU workstation), 44 min including 21 min of thermal pauses (guard at 68 °C), 9 GB peak GPU memory; best val loss 0.073 (from ~1.2) |
 | Output | LoRA adapter → merged bf16 model → GGUF **Q4_K_M** |
 
 ### Data: permitted, synthetic, labelled by construction
@@ -104,6 +104,8 @@ All data was generated for this project this week. No private or scraped data wa
 
 On the **unseen injection styles** the fine-tuned model catches 98.0 % (Q4_K_M: 95.1 %); on the **unseen domains**
 100 % with 0.8 % false alarms (Q4_K_M: 98.5 %, 0 %).
+
+**Attacks in Urdu.** Attacks written in another language were held out of training entirely. On the 33 held-out attacks in Urdu script, Qwen Shield caught 31 and quoted the exact Urdu sentence in 29. The base model flagged all 33 but found the evidence in none, because it flags almost everything: it also flagged all 15 innocent documents written in other languages, where Qwen Shield flagged none. Results: `backend/benchmarks/results/assess-urdu-heldout.json`.
 
 ### End to end, with a real agent
 

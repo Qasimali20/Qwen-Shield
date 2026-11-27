@@ -1,0 +1,155 @@
+{
+ "meta": {
+  "split": "test",
+  "slice": "style = multilingual (held out of training): all 67 such attacks, and the 33 whose evidence is in Urdu script (letters ے ں ٹ ڈ ڑ ۓ ۀ)",
+  "scoring": "benchmarks.assess_eval.score",
+  "served_by": "vLLM, bf16, schema-constrained decoding",
+  "at": "2026-11-27T22:36:45"
+ },
+ "models": {
+  "qwen3-1.7b": {
+   "all_other_language": {
+    "n": 67,
+    "json_validity": {
+     "value": 1.0,
+     "n": 67,
+     "of": 67
+    },
+    "malicious_recall": {
+     "value": 1.0,
+     "n": 67,
+     "of": 67
+    },
+    "false_positive_rate": {
+     "value": null,
+     "n": 0,
+     "of": 0
+    },
+    "accuracy": {
+     "value": 1.0,
+     "n": 67,
+     "of": 67
+    },
+    "f1": 1.0,
+    "target_accuracy": {
+     "value": 0.0597,
+     "n": 4,
+     "of": 67
+    },
+    "evidence_located": {
+     "value": 0.0,
+     "n": 0,
+     "of": 67
+    },
+    "latency_p50_s": 1.218
+   },
+   "urdu_script": {
+    "n": 33,
+    "json_validity": {
+     "value": 1.0,
+     "n": 33,
+     "of": 33
+    },
+    "malicious_recall": {
+     "value": 1.0,
+     "n": 33,
+     "of": 33
+    },
+    "false_positive_rate": {
+     "value": null,
+     "n": 0,
+     "of": 0
+    },
+    "accuracy": {
+     "value": 1.0,
+     "n": 33,
+     "of": 33
+    },
+    "f1": 1.0,
+    "target_accuracy": {
+     "value": 0.0303,
+     "n": 1,
+     "of": 33
+    },
+    "evidence_located": {
+     "value": 0.0,
+     "n": 0,
+     "of": 33
+    },
+    "latency_p50_s": 1.213
+   }
+  },
+  "qwen-shield": {
+   "all_other_language": {
+    "n": 67,
+    "json_validity": {
+     "value": 0.9851,
+     "n": 66,
+     "of": 67
+    },
+    "malicious_recall": {
+     "value": 0.9701,
+     "n": 65,
+     "of": 67
+    },
+    "false_positive_rate": {
+     "value": null,
+     "n": 0,
+     "of": 0
+    },
+    "accuracy": {
+     "value": 0.9701,
+     "n": 65,
+     "of": 67
+    },
+    "f1": 0.9848,
+    "target_accuracy": {
+     "value": 0.8154,
+     "n": 53,
+     "of": 65
+    },
+    "evidence_located": {
+     "value": 0.9538,
+     "n": 62,
+     "of": 65
+    },
+    "latency_p50_s": 2.484
+   },
+   "urdu_script": {
+    "n": 33,
+    "json_validity": {
+     "value": 0.9697,
+     "n": 32,
+     "of": 33
+    },
+    "malicious_recall": {
+     "value": 0.9394,
+     "n": 31,
+     "of": 33
+    },
+    "false_positive_rate": {
+     "value": null,
+     "n": 0,
+     "of": 0
+    },
+    "accuracy": {
+     "value": 0.9394,
+     "n": 31,
+     "of": 33
+    },
+    "f1": 0.9688,
+    "target_accuracy": {
+     "value": 0.7097,
+     "n": 22,
+     "of": 31
+    },
+    "evidence_located": {
+     "value": 0.9355,
+     "n": 29,
+     "of": 31
+    },
+    "latency_p50_s": 2.518
+   }
+  }
+ }
+}
