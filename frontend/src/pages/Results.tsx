@@ -6,7 +6,7 @@ import { api, type AssessMetrics, type Rate, type Report, type Training } from '
 const MODE: Record<string, string> = { none: 'No defence', rules: 'Rules only', model: 'Model only', full: 'Qwen Shield (full)' }
 const FAMILY: Record<string, string> = { A: 'Unauthorized action', B: 'Abused email', C: 'Malicious ticket', D: 'Manipulated answer' }
 const SLICE: Record<string, string> = { all: 'All 344 held-out examples', unseen_style: 'Injection styles never seen in training', unseen_domain: 'Domains never seen in training' }
-const SPLIT: Record<string, string> = { test: 'Held-out · 35B agent', test_4b: 'Held-out · 4B agent (laptop-sized)', dev: 'Development' }
+const SPLIT: Record<string, string> = { test: 'Held-out · larger agent', test_4b: 'Held-out · 4B agent (laptop-sized)', dev: 'Development' }
 const pct = (r?: Rate | null, digits = 0) => (r && r.value != null ? `${(r.value * 100).toFixed(digits)}%` : '–')
 const frac = (r?: Rate) => (r ? `${r.n}/${r.of}` : '')
 
@@ -42,7 +42,7 @@ function Hero({ r }: { r: Report }) {
       {lap && <div className="tile">
         <span className="tl">On an ordinary laptop, CPU only</span>
         <span className="tv"><b>{lap.summary.false_alarms}</b><small>false alarms</small></span>
-        <span className="tn">{lap.summary.malicious_caught} attacks caught · 1.06 GB model · {lap.hardware.cpu.replace(/\(R\)|\(TM\)|11th Gen|@.*$/g, '').trim()}</span></div>}
+        <span className="tn">{lap.summary.malicious_caught} attacks caught · {lap.hardware.cpu.replace(/\(R\)|\(TM\)|11th Gen|@.*$/g, '').trim()}</span></div>}
     </div>
   )
 }
@@ -58,9 +58,9 @@ function EndToEnd({ r }: { r: Report }) {
       <header><h2><ShieldCheck size={16} /> End to end: a real agent doing real tasks</h2>
         <div className="seg">{splits.map(s => <button key={s} className={s === split ? 'on' : ''} onClick={() => setSplit(s)}>
           {SPLIT[s] ?? s} ({r.end_to_end[s].scenarios})</button>)}</div></header>
-      <p className="muted">Agent: {e.agent_model}. Every number is what actually executed in the mock tools, not what a model said.
+      <p className="muted">Every number is what actually executed in the mock tools, not what a model said.
         {split !== 'dev' && ' The held-out scenarios were written by hand and frozen before any fine-tuning result was seen.'}
-        {split === 'test_4b' && ' Here every model is laptop-sized: a 4B agent and the 1.06 GB shield, both through Ollama.'}</p>
+        {split === 'test_4b' && ' Here every model is laptop-sized: a 4B agent and the quantized shield, both through Ollama.'}</p>
       <div className="scroll"><table className="res">
         <thead><tr><th>Protection</th><th>Attacks that succeeded</th>{families.map(f => <th key={f}>{FAMILY[f] ?? f}</th>)}
           <th>All tasks completed</th><th>Benign blocked (false positives)</th><th>Check time (p50)</th></tr></thead>
@@ -104,11 +104,11 @@ function LaptopCard({ r }: { r: Report }) {
   return (
     <section className="card">
       <header><h2><Laptop size={16} /> On a normal laptop</h2></header>
-      <p className="muted">The 1.06 GB Q4_K_M model through Ollama, CPU only, on 80 held-out examples, one request at a time. The laptop
+      <p className="muted">The Q4_K_M model through Ollama, CPU only, on 80 held-out examples, one request at a time. The laptop
         was in everyday use during the run.</p>
       <div className="laps">{r.laptop.map(l => { const s = l.summary; return (
         <div key={l.key} className={`lap ${l.key}`}>
-          <h3>{l.key === 'laptop' ? <Laptop size={15} /> : <Cpu size={15} />}{l.key === 'laptop' ? 'HP EliteBook 840 G8' : 'DGX Spark CPU (reference)'}</h3>
+          <h3>{l.key === 'laptop' ? <Laptop size={15} /> : <Cpu size={15} />}{l.key === 'laptop' ? 'HP EliteBook 840 G8' : 'Workstation CPU (reference)'}</h3>
           <p className="spec">{l.hardware.cpu} · {l.hardware.cores} threads · {Math.ceil(l.hardware.ram_gb / 2) * 2} GB RAM · {l.hardware.os.split(' ')[0]}</p>
           <dl>
             <div><dt>Attacks caught</dt><dd>{s.malicious_caught}</dd></div>
@@ -159,7 +159,7 @@ function TrainingCard({ t }: { t: Training }) {
         </dl>
         <figure><figcaption>Validation loss</figcaption><LossChart t={t} /></figure>
       </div>
-      <p className="note"><Info size={14} /> Labels come from the generation spec, not from a model: a teacher (Qwen3.6-35B) only writes the
+      <p className="note"><Info size={14} /> Labels come from the generation spec, not from a model: a larger Qwen teacher only writes the
         text, a blind auditor must agree, and anything overlapping the benchmark scenarios is removed.</p>
     </section>
   )
@@ -174,7 +174,7 @@ function AllRuns() {
   return (
     <details className="card raw"><summary>Every saved end-to-end run ({data.length})</summary>
       <select value={b.label} onChange={e => setLabel(e.target.value)}>{data.map(x => <option key={x.label} value={x.label}>{x.label}</option>)}</select>
-      <p className="muted">{b.meta.scenarios} scenarios · agent {b.meta.agent_model} · shield {b.meta.shield_model} · {b.meta.at}</p>
+      <p className="muted">{b.meta.scenarios} scenarios · {b.meta.at}</p>
       <div className="scroll"><table className="res">
         <thead><tr><th>Protection</th><th>Attacks succeeded</th><th>Tasks completed</th><th>False positives</th><th>Valid JSON</th></tr></thead>
         <tbody>{modes.map(m => { const s = b.summary[m]; return <tr key={m}><td><b>{MODE[m] ?? m}</b></td>
@@ -201,7 +201,7 @@ export function Results() {
         <li>One policy rule came after looking at held-out results: inside a channel the user granted, an action is now blocked only if its
           arguments carry the attack. The model and data were not changed. Both runs are saved (<code>*-shield-v1</code> before,
           <code>*-shield-v1b</code> after).</li>
-        <li>The agent is a 35B model. A 1.7B agent rarely read the documents, so attacks never reached it. The shield is the 1.7B model.</li>
+        <li>The headline agent is a larger Qwen model. A 1.7B agent rarely read the documents, so attacks never reached it. The shield is the 1.7B model.</li>
         <li>Scenario counts are small (40 and 30); treat single-scenario differences as noise.</li></ul></section>
       <AllRuns />
     </>

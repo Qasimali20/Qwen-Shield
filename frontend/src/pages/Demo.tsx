@@ -120,7 +120,7 @@ export default function Demo() {
     <>
       <div className="intro">
         <h1>Same task, same poisoned document, {keys.length === 3 ? 'three' : 'two'} agents</h1>
-        <p className="muted">The same agent{health ? ` (${health.agent.model})` : ''} runs the task unprotected and behind Qwen Shield
+        <p className="muted">The same agent runs the task unprotected and behind Qwen Shield
           {shown3 ? ', once with the untrained base model as the assessor and once with the fine-tuned one' : ''}. Everything runs locally.</p>
       </div>
       <div className="picker">

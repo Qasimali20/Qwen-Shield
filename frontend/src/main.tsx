@@ -14,9 +14,9 @@ function Status() {
   const { data } = useQuery({ queryKey: ['health'], queryFn: api.health, refetchInterval: 10000 })
   if (!data) return null
   return <div className="status">
-    <span className={data.agent.ok ? 'up' : 'down'}>agent · {data.agent.model}</span>
-    <span className={data.shield.ok ? 'up' : 'down'}>shield · {data.shield.model}</span>
-    {data.base_shield && <span className={data.base_shield.ok ? 'up' : 'down'}>base · {data.base_shield.model}</span>}
+    <span className={data.agent.ok ? 'up' : 'down'}>agent</span>
+    <span className={data.shield.ok ? 'up' : 'down'}>shield</span>
+    {data.base_shield && <span className={data.base_shield.ok ? 'up' : 'down'}>base model</span>}
   </div>
 }
 

@@ -16,7 +16,7 @@ END_TO_END = {
              ("finetuned", "Shield + fine-tuned Qwen3-1.7B", "test-agent36-shield-v1b", "full")],
     "test_4b": [("none", "No defence", "test-agent4b-shield-q4-v2", "none"),
                 ("rules", "Rules only", "test-agent4b-shield-q4-v2", "rules"),
-                ("finetuned", "Shield + fine-tuned, Q4_K_M 1.06 GB (laptop)", "test-agent4b-shield-q4-v2", "full"),
+                ("finetuned", "Shield + fine-tuned, Q4_K_M (laptop)", "test-agent4b-shield-q4-v2", "full"),
                 ("bf16", "Shield + fine-tuned, bf16", "test-agent4b-shield-bf16", "full")],
     "dev": [("none", "No defence", "dev-agent36-shield-v1b", "none"),
             ("rules", "Rules only", "dev-agent36-shield-v1b", "rules"),
@@ -26,7 +26,7 @@ END_TO_END = {
 # Assessment level: (row key, label, result file, model name inside that file)
 ASSESSMENT = [("base", "Base Qwen3-1.7B", "assess-base", "qwen3-1.7b"),
               ("finetuned", "Qwen Shield (bf16)", "assess-shield-v1", "qwen-shield"),
-              ("q4", "Qwen Shield Q4_K_M (1.06 GB)", "assess-shield-v1-q4km-ollama", "qwen-shield:1.7b")]
+              ("q4", "Qwen Shield Q4_K_M", "assess-shield-v1-q4km-ollama", "qwen-shield:1.7b")]
 SLICES = ("all", "unseen_style", "unseen_domain")
 LAPTOP = [("laptop", "laptop-i5-1135g7-cpu"), ("reference", "laptop-bench-node2-cpu")]
 TRAINING = "training-shield-v1"
