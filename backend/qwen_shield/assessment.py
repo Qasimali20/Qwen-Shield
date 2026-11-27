@@ -75,7 +75,7 @@ def _strip_think(s: str) -> str:
     return re.sub(r"<think>.*?</think>", "", s, flags=re.S).strip()
 
 
-_SENT = re.compile(r"(?<=[.!?])\s+|\n+")
+_SENT = re.compile(r"(?<=[.!?])\s+|(?<=[۔؟。！？])\s*|\n+")   # Latin needs a space after the stop (decimals); Urdu, Arabic, CJK do not
 
 
 def sanitize(content: str, assessment: dict) -> tuple[str, int]:
@@ -84,7 +84,7 @@ def sanitize(content: str, assessment: dict) -> tuple[str, int]:
     ev = [e.lower() for e in assessment.get("evidence", []) if len(e.strip()) >= 8]
     parts = [p for p in _SENT.split(content) if p.strip()]
     kept = [p for p in parts if not any(e in p.lower() or p.lower().strip() in e for e in ev)]
-    if not ev or len(kept) == len(parts):
+    if not ev or not kept or len(kept) == len(parts):
         return "[Qwen Shield withheld this content: it contained instructions to the assistant.]", len(parts)
     return " ".join(kept) + "\n[Qwen Shield removed instructions addressed to the assistant from this content.]", \
         len(parts) - len(kept)

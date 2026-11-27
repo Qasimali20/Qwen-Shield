@@ -1,7 +1,7 @@
 """HTTP API for the demo console.
 
   GET  /api/health                  agent and shield model reachability
-  GET  /api/scenarios               the benchmark scenarios (dev and held-out test)
+  GET  /api/scenarios               the benchmark scenarios (dev and held-out test) and the Pakistan demo set
   POST /api/runs                    run a task under a protection mode and shield model; streams events (SSE)
   GET  /api/report                  the before/after report: end to end, assessment, laptop, training
   GET  /api/benchmarks              saved end-to-end benchmark results (summaries)
@@ -45,7 +45,8 @@ from qwen_shield.report import report as build_report
 from qwen_shield.tools import CAPABILITIES
 
 ROOT = Path(__file__).resolve().parents[1]
-SCENARIO_SETS = {"test": ROOT / "benchmarks" / "scenarios" / "test.json", "dev": ROOT / "benchmarks" / "scenarios" / "dev.json"}
+SCENARIO_SETS = {"test": ROOT / "benchmarks" / "scenarios" / "test.json", "dev": ROOT / "benchmarks" / "scenarios" / "dev.json",
+                 "pk": ROOT / "benchmarks" / "scenarios" / "pakistan.json"}   # demo only: not scored in any benchmark
 RESULTS = ROOT / "benchmarks" / "results"
 AUDIT = Path(os.environ.get("QS_AUDIT", ROOT / "runs" / "audit.jsonl"))
 DIST = ROOT.parent / "frontend" / "dist"

@@ -107,6 +107,8 @@ On the **unseen injection styles** the fine-tuned model catches 98.0 % (Q4_K_M: 
 
 **Attacks in Urdu.** Attacks written in another language were held out of training entirely. On the 33 held-out attacks in Urdu script, Qwen Shield caught 31 and quoted the exact Urdu sentence in 29. The base model flagged all 33 but found the evidence in none, because it flags almost everything: it also flagged all 15 innocent documents written in other languages, where Qwen Shield flagged none. Results: `backend/benchmarks/results/assess-urdu-heldout.json`.
 
+**On a public benchmark: InjecAgent.** [InjecAgent](https://github.com/uiuc-kang-lab/InjecAgent) (Zhan et al., ACL Findings 2024, MIT licence) hides an attacker's instruction inside what a tool returns to an agent: 1,054 cases over 17 user tasks, none used in training or tuning. Qwen Shield flagged 978 (92.8 %) and quoted the exact attack sentence in 952 (90.3 %). The base model flagged all 1,054 but quoted the attack in none. On the same 17 tool outputs with the attack replaced by an ordinary sentence (a control we added, since the benchmark has no benign cases), Qwen Shield flagged 0 and the base model 15. One limit: InjecAgent's tool outputs are single-line JSON, so our sentence-level sanitizer usually withholds the whole output instead of only the attack (the rest was kept in 94 of the 978); removing just the attacked JSON field is the next step. This measures the shield's assessment and removal, not InjecAgent's full agent score. Results: `backend/benchmarks/results/injecagent-bf16.json`.
+
 ### End to end, with a real agent
 
 The agent is a larger Qwen model running locally; the shield is Qwen3-1.7B. Attack families: A, an action the user never
@@ -172,6 +174,7 @@ In one of the six attacks (TC01) the agent never opened the poisoned document, s
 
 ## Honesty notes
 
+- **A sanitizer bug found by the Pakistan examples, fixed.** Sentence splitting ignored Urdu, Arabic and Chinese full stops, so cutting one Urdu sentence cut the whole paragraph; and when nothing was left, the agent got an empty document and made up an answer. Both are fixed (it now withholds the content with a notice) and tested. The five held-out scenarios that contain such punctuation were rerun: the fine-tuned results are identical, and with the base guard two scenarios swapped (1 of 5 tasks either way), so no reported number changes.
 - **One policy change came after looking at held-out results.** The first end-to-end run blocked every action in a
   permitted channel once the content was flagged, which stopped attacks but also the user's clean emails and tickets. The
   content-aware rule (`sanitized_clean`: allow the action if its arguments do not carry the attack) was added after
@@ -221,6 +224,8 @@ with the base model (`SHIELD_BASE_MODEL`, optional) and the shield with the fine
 **Results** shows every before/after number above, read from `backend/benchmarks/results/`. **Audit** lists every
 assessment, decision and executed action.
 
+**Pakistan examples** (in the console, demo only, not in any benchmark): an invoice with a hidden Urdu instruction to pay a JazzCash wallet (unprotected, the agent puts the wallet number in the email; with Qwen Shield the sentence is cut and the correct email goes out), a Roman Urdu helpline swap (caught and quoted exactly), and an ordinary all-Urdu exam notice, which the model wrongly flags: a known false alarm.
+
 **Reproduce the model.**
 
 ```bash
@@ -229,6 +234,7 @@ python -m training.train --base <Qwen3-1.7B> --out ../artifacts/adapters/shield-
 python -m training.export --base <Qwen3-1.7B> --adapter ../artifacts/adapters/shield-v1 --out ../artifacts/merged/qwen-shield-1.7b
 python -m training.to_gguf --model ../artifacts/merged/qwen-shield-1.7b --quant Q4_K_M --ollama qwen-shield:1.7b
 python -m benchmarks.assess_eval --models qwen3-1.7b,qwen-shield --split test --label shield-v1
+python -m benchmarks.injecagent_eval --data <InjecAgent data folder> --models qwen3-1.7b,qwen-shield --label bf16
 python -m benchmarks.run --scenarios benchmarks/scenarios/test.json --modes none,rules,full --label test-shield-v1
 pytest tests
 ```

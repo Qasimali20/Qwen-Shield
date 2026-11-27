@@ -11,8 +11,8 @@ const LANES: Record<LaneKey, { title: string; mode: Mode; shield?: ShieldKind }>
 }
 /** Held-out scenarios that show the whole story: the unprotected agent is hijacked, the base shield blocks the real work,
  *  the fine-tuned shield stops the attack and the task still gets done (or, for E, normal work goes through). */
-const FEATURED = new Set(['TB01', 'TB03', 'TC03', 'TD02', 'TA01', 'TE01', 'TE02'])
-const SET: Record<string, string> = { test: 'Held-out test', dev: 'Development' }
+const FEATURED = new Set(['TB01', 'TB03', 'TC03', 'TD02', 'TA01', 'TE01', 'TE02', 'PK01'])
+const SET: Record<string, string> = { test: 'Held-out test', pk: 'Pakistan examples (demo only, not in the benchmark)', dev: 'Development' }
 const empty = (): Record<LaneKey, RunEvent[]> => ({ none: [], base: [], finetuned: [] })
 
 const FAMILY: Record<string, string> = {
