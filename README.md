@@ -209,8 +209,8 @@ AGENT_URL=<any OpenAI-compatible server> AGENT_MODEL=<model> \
 cd ../frontend && npm ci && npm run build      # the API serves the console at http://127.0.0.1:8100
 ```
 
-To serve the console beyond localhost, set `QS_PASSWORD` (and optionally `QS_USER`, default `qwen`): every page and
-API call then needs that login. The console has three pages. **Live demo** runs one scenario (or your own document) through an unprotected agent, the shield
+To serve the console beyond localhost, set `QS_PASSWORD` (and optionally `QS_USER`, default `admin`): the console then
+opens on a sign-in page and the API needs the session it sets. The console has three pages. **Live demo** runs one scenario (or your own document) through an unprotected agent, the shield
 with the base model (`SHIELD_BASE_MODEL`, optional) and the shield with the fine-tuned model, side by side.
 **Results** shows every before/after number above, read from `backend/benchmarks/results/`. **Audit** lists every
 assessment, decision and executed action.

@@ -121,3 +121,16 @@ details.raw summary { cursor: pointer; font-weight: 600; } details.raw[open] sum
 @media (max-width: 1200px) { .hero { grid-template-columns: repeat(2, 1fr); } .lanes.n3 { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 1000px) { .lanes, .lanes.n3, .two { grid-template-columns: 1fr; } .top { flex-wrap: wrap; gap: 10px; } }
 @media (max-width: 560px) { main { padding: 16px; } .hero { grid-template-columns: 1fr; } dl { grid-template-columns: 1fr 1fr; } }
+
+/* sign-in */
+.signin { min-height: 100vh; display: grid; place-items: center; padding: 24px 16px; }
+.signin-card { width: 100%; max-width: 380px; display: flex; flex-direction: column; gap: 8px; background: var(--panel);
+  border: 1px solid var(--line); border-radius: 14px; padding: 28px 26px; }
+.signin-card .brand { font-size: 22px; margin-bottom: 2px; }
+.signin-card > p { margin: 0 0 10px; }
+.signin-card label { font-size: 13px; font-weight: 600; color: var(--ink-2); margin-top: 6px; }
+.signin-card input { padding: 9px 11px; }
+.signin-card input:focus-visible, .signin-card button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.signin-card .bad { margin: 4px 0 0; font-size: 14px; }
+.signin-card button.primary { margin-top: 12px; justify-content: center; padding: 10px 14px; }
+.signout { margin-left: 4px; font-size: 13px; padding: 6px 11px; color: var(--ink-2); }

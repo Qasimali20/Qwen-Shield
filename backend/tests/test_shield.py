@@ -166,16 +166,23 @@ def test_fail_closed_only_when_content_was_read_but_not_assessed():
     assert executed(unassessed) == ["read_document"]
 
 
-def test_console_login_is_required_when_a_password_is_set(monkeypatch):
+
+def test_console_sign_in(monkeypatch):
     from fastapi.testclient import TestClient
     from qwen_shield.api import app
     client = TestClient(app)
     monkeypatch.delenv("QS_PASSWORD", raising=False)
     assert client.get("/api/scenarios").status_code == 200                       # local demo: open
-    monkeypatch.setenv("QS_PASSWORD", "s3cret")
-    r = client.get("/api/scenarios")
-    assert r.status_code == 401 and r.headers["www-authenticate"].startswith("Basic")
-    assert client.get("/api/scenarios", auth=("qwen", "wrong")).status_code == 401
-    assert client.get("/api/scenarios", auth=("other", "s3cret")).status_code == 401
-    assert client.get("/api/scenarios", auth=("qwen", "s3cret")).status_code == 200
-    assert client.get("/api/scenarios", headers={"Authorization": "Basic !!notbase64"}).status_code == 401
+    assert client.get("/api/session").json()["required"] is False
+    monkeypatch.setenv("QS_USER", "admin"); monkeypatch.setenv("QS_PASSWORD", "s3cret")
+    assert client.get("/api/scenarios").status_code == 401
+    assert client.get("/").status_code in (200, 404, 503)                        # the page itself loads (no data in it)
+    assert client.get("/api/session").json() == {"required": True, "signed_in": False, "user": "admin"}
+    assert client.post("/api/login", json={"username": "admin", "password": "wrong"}).status_code == 401
+    assert client.post("/api/login", json={"username": "root", "password": "s3cret"}).status_code == 401
+    assert client.post("/api/login", json={"username": "admin", "password": "s3cret"}).status_code == 200
+    assert client.get("/api/scenarios").status_code == 200 and client.get("/api/session").json()["signed_in"]
+    client.cookies.set("qs_session", client.cookies["qs_session"].replace("admin", "admim"))
+    assert client.get("/api/scenarios").status_code == 401                       # a tampered cookie is refused
+    client.post("/api/logout"); client.cookies.clear()
+    assert client.get("/api/scenarios").status_code == 401

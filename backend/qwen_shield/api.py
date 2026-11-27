@@ -12,16 +12,22 @@ Models are local OpenAI-compatible servers configured by environment: AGENT_URL 
 SHIELD_URL / SHIELD_MODEL for the fine-tuned assessor, and optionally SHIELD_BASE_MODEL (same server) for the untuned
 base model, so the console can show both side by side.
 
-Set QS_PASSWORD to require a login (HTTP Basic, user QS_USER, default "qwen") for every page and API call; do this
-before serving the console beyond localhost. Unset, the console is open, as for a local demo."""
+Set QS_PASSWORD (and QS_USER, default "admin") to require a sign-in before serving the console beyond localhost: the
+console shows a sign-in page, and every API call except /api/session and /api/login needs the session cookie it sets
+(HMAC-signed, HttpOnly, 12 hours). Unset, the console is open, as for a local demo.
+
+  GET  /api/session                 whether sign-in is required and whether this browser is signed in
+  POST /api/login                   {username, password} -> session cookie
+  POST /api/logout                  clears the session cookie"""
 from __future__ import annotations
 
 import asyncio
-import base64
-import binascii
+import hashlib
+import hmac
 import json
 import os
 import secrets
+import time
 from collections import deque
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -29,7 +35,7 @@ from typing import Literal
 
 import httpx
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, PlainTextResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -73,24 +79,74 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Qwen Shield", lifespan=lifespan, docs_url="/api/docs", openapi_url="/api/openapi.json")
 
 
-def _authorized(header: str, user: str, password: str) -> bool:
-    """HTTP Basic credentials match, compared in constant time."""
-    scheme, _, value = header.partition(" ")
-    if scheme.lower() != "basic":
-        return False
+COOKIE, SESSION_S = "qs_session", 12 * 3600
+_SECRET = os.environ.get("QS_SECRET", "").encode() or secrets.token_bytes(32)    # sessions end when the server restarts
+OPEN_PATHS = {"/api/session", "/api/login", "/api/logout"}
+
+
+def _login() -> tuple[str, str] | None:
+    """(user, password) when sign-in is required, else None."""
+    password = os.environ.get("QS_PASSWORD", "")
+    return (os.environ.get("QS_USER", "admin"), password) if password else None
+
+
+def _sign(user: str, expires: int) -> str:
+    body = f"{user}|{expires}"
+    return f"{body}|{hmac.new(_SECRET, body.encode(), hashlib.sha256).hexdigest()}"
+
+
+def _signed_in(token: str, user: str) -> bool:
     try:
-        u, _, pw = base64.b64decode(value, validate=True).decode().partition(":")
-    except (binascii.Error, UnicodeDecodeError):
+        u, expires, mac = token.rsplit("|", 2)
+        valid = hmac.compare_digest(_sign(u, int(expires)), token)
+    except ValueError:
         return False
-    return secrets.compare_digest(u.encode(), user.encode()) & secrets.compare_digest(pw.encode(), password.encode())
+    return valid and u == user and int(expires) > time.time()
 
 
 @app.middleware("http")
 async def require_login(request: Request, call_next):
-    password = os.environ.get("QS_PASSWORD", "")
-    if password and not _authorized(request.headers.get("authorization", ""), os.environ.get("QS_USER", "qwen"), password):
-        return PlainTextResponse("Login required", status_code=401, headers={"WWW-Authenticate": 'Basic realm="Qwen Shield"'})
+    """The page and its assets load without a session (they hold no data); the API needs one."""
+    login = _login()
+    path = request.url.path
+    if login and path.startswith("/api") and path not in OPEN_PATHS and not _signed_in(request.cookies.get(COOKIE, ""), login[0]):
+        return JSONResponse({"detail": "sign-in required"}, status_code=401)
     return await call_next(request)
+
+
+class Credentials(BaseModel):
+    username: str = Field(max_length=200)
+    password: str = Field(max_length=200)
+
+
+@app.get("/api/session")
+async def session(request: Request) -> dict:
+    login = _login()
+    return {"required": login is not None,
+            "signed_in": login is None or _signed_in(request.cookies.get(COOKIE, ""), login[0]),
+            "user": login[0] if login else None}
+
+
+@app.post("/api/login")
+async def login(c: Credentials, request: Request) -> Response:
+    expected = _login()
+    if expected is None:
+        return JSONResponse({"ok": True})
+    ok = secrets.compare_digest(c.username.encode(), expected[0].encode()) & secrets.compare_digest(c.password.encode(), expected[1].encode())
+    if not ok:
+        await asyncio.sleep(0.6)                              # slows guessing
+        raise HTTPException(401, "Wrong username or password")
+    r = JSONResponse({"ok": True})
+    r.set_cookie(COOKIE, _sign(expected[0], int(time.time()) + SESSION_S), max_age=SESSION_S, httponly=True,
+                 samesite="strict", secure=request.url.scheme == "https", path="/")
+    return r
+
+
+@app.post("/api/logout")
+async def logout() -> Response:
+    r = JSONResponse({"ok": True})
+    r.delete_cookie(COOKIE, path="/")
+    return r
 
 
 _SCENARIO_CACHE: dict[str, tuple[float, list[dict]]] = {}

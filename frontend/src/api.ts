@@ -44,10 +44,21 @@ export type Report = {
   training: Training | null
 }
 
+export type Session = { required: boolean; signed_in: boolean; user: string | null }
+
+/** Called when the server says the session has ended, so the app can show the sign-in page again. */
+let onSignedOut = () => {}
+export const setSignedOutHandler = (f: () => void) => { onSignedOut = f }
+
 async function get<T>(path: string): Promise<T> {
   const r = await fetch(`/api${path}`)
+  if (r.status === 401) onSignedOut()
   if (!r.ok) throw new Error(`${r.status} ${await r.text()}`)
   return r.json() as Promise<T>
+}
+
+async function post(path: string, body?: unknown): Promise<Response> {
+  return fetch(`/api${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) })
 }
 
 export const api = {
@@ -56,12 +67,21 @@ export const api = {
   benchmarks: () => get<Benchmark[]>('/benchmarks'),
   report: () => get<Report>('/report'),
   audit: () => get<RunEvent[]>('/audit?limit=200'),
+  session: () => get<Session>('/session'),
+  /** Resolves to an error message, or null when signed in. */
+  login: async (username: string, password: string): Promise<string | null> => {
+    const r = await post('/login', { username, password })
+    if (r.ok) return null
+    return r.status === 401 ? 'Wrong username or password.' : `Sign-in failed (${r.status}). Try again.`
+  },
+  logout: () => post('/logout'),
 }
 
 /** Start a run and call `onEvent` for each event as it arrives. Abort with the signal. */
 export async function streamRun(body: { mode: Mode; shield?: ShieldKind; scenario_id?: string; user_task?: string; documents?: Record<string, string>; granted?: string[] },
   onEvent: (e: RunEvent) => void, signal: AbortSignal): Promise<void> {
   const r = await fetch('/api/runs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal })
+  if (r.status === 401) onSignedOut()
   if (!r.ok || !r.body) throw new Error(`${r.status} ${await r.text()}`)
   const reader = r.body.pipeThrough(new TextDecoderStream()).getReader()
   let buf = ''
