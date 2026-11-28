@@ -43,6 +43,12 @@ export type Report = {
   laptop: LaptopRun[]
   training: Training | null
   external: External | null
+  baseline: Baseline | null
+}
+export type Baseline = {
+  meta: { detector: string }
+  held_out_344: { attacks_caught: Rate; false_alarms: Rate }
+  injecagent: { attacks_flagged: Rate; benign_control_flagged: Rate }
 }
 export type External = {
   meta: { benchmark: string; attacks: number; benign_control: number }

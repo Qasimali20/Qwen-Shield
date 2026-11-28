@@ -3,7 +3,7 @@
   "os": "Linux 7.0.0-43-generic",
   "arch": "x86_64",
   "host": "linux",
-  "cpu": "11th Gen Intel(R) Core(TM) i5-1135G7 @ 2.40GHz",
+  "cpu": "Intel Core i5, 11th gen, 4 cores (laptop)",
   "cores": "8",
   "ram_gb": 14.8,
   "ollama": "ollama version is 0.32.1"

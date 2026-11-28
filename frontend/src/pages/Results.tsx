@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Cpu, FlaskConical, Globe, Info, Laptop, ShieldCheck, TrendingDown } from 'lucide-react'
-import { api, type AssessMetrics, type External, type Rate, type Report, type Training } from '../api'
+import { api, type AssessMetrics, type Baseline, type External, type Rate, type Report, type Training } from '../api'
 
 const MODE: Record<string, string> = { none: 'No defence', rules: 'Rules only', model: 'Model only', full: 'Qwen Shield (full)' }
 const FAMILY: Record<string, string> = { A: 'Unauthorized action', B: 'Abused email', C: 'Malicious ticket', D: 'Manipulated answer' }
@@ -108,7 +108,7 @@ function LaptopCard({ r }: { r: Report }) {
         was in everyday use during the run.</p>
       <div className="laps">{r.laptop.map(l => { const s = l.summary; return (
         <div key={l.key} className={`lap ${l.key}`}>
-          <h3>{l.key === 'laptop' ? <Laptop size={15} /> : <Cpu size={15} />}{l.key === 'laptop' ? 'HP EliteBook 840 G8' : 'Workstation CPU (reference)'}</h3>
+          <h3>{l.key === 'laptop' ? <Laptop size={15} /> : <Cpu size={15} />}{l.key === 'laptop' ? 'Ordinary laptop, CPU only' : 'Workstation CPU (reference)'}</h3>
           <p className="spec">{l.hardware.cpu} · {l.hardware.cores} threads · {Math.ceil(l.hardware.ram_gb / 2) * 2} GB RAM · {l.hardware.os.split(' ')[0]}</p>
           <dl>
             <div><dt>Attacks caught</dt><dd>{s.malicious_caught}</dd></div>
@@ -206,6 +206,29 @@ function ExternalCard({ x }: { x: External }) {
   )
 }
 
+function BaselineCard({ b, r }: { b: Baseline; r: Report }) {
+  const ours = r.assessment.rows.find(x => x.key === 'finetuned')?.all
+  const ext = r.external?.models['qwen-shield']
+  const rows: [string, Rate | undefined, Rate | undefined, 'low' | 'high'][] = [
+    ['Held-out documents: attacks caught', b.held_out_344.attacks_caught, ours?.malicious_recall, 'high'],
+    ['Held-out documents: false alarms', b.held_out_344.false_alarms, ours?.false_positive_rate, 'low'],
+    ['InjecAgent: attacks caught', b.injecagent.attacks_flagged, ext?.all_attacks.flagged, 'high'],
+    ['InjecAgent control: false alarms', b.injecagent.benign_control_flagged, ext?.benign_control.flagged, 'low']]
+  return (
+    <section className="card">
+      <header><h2><ShieldCheck size={16} /> Against an existing detector</h2></header>
+      <p className="muted">The widely used open-source classifier ProtectAI DeBERTa v2 (Apache-2.0) on the same tests, given the untrusted
+        content in 512-token windows, its intended use. It catches blunt overrides but misses attacks written as ordinary business text,
+        and it cannot quote the attack sentence.</p>
+      <div className="scroll"><table className="res">
+        <thead><tr><th>Same test</th><th>ProtectAI DeBERTa v2</th><th>Qwen Shield</th></tr></thead>
+        <tbody>{rows.map(([label, theirs, mine, good]) => (
+          <tr key={label}><td><b>{label}</b></td><td><Bar r={theirs} good={good} /></td><td><Bar r={mine} good={good} /></td></tr>))}</tbody>
+      </table></div>
+    </section>
+  )
+}
+
 export function Results() {
   const { data, error } = useQuery({ queryKey: ['report'], queryFn: api.report })
   if (error) return <p className="bad">{String(error)}</p>
@@ -218,6 +241,7 @@ export function Results() {
       <EndToEnd r={data} />
       <Assessment r={data} />
       {data.external && <ExternalCard x={data.external} />}
+      {data.baseline && <BaselineCard b={data.baseline} r={data} />}
       <div className="two"><LaptopCard r={data} />{data.training && <TrainingCard t={data.training} />}</div>
       <section className="card honest"><header><h2><Info size={16} /> Honesty notes</h2></header><ul>
         <li>One policy rule came after looking at held-out results: inside a channel the user granted, an action is now blocked only if its

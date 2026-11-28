@@ -109,6 +109,18 @@ On the **unseen injection styles** the fine-tuned model catches 98.0 % (Q4_K_M: 
 
 **On a public benchmark: InjecAgent.** [InjecAgent](https://github.com/uiuc-kang-lab/InjecAgent) (Zhan et al., ACL Findings 2024, MIT licence) hides an attacker's instruction inside what a tool returns to an agent: 1,054 cases over 17 user tasks, none used in training or tuning. Qwen Shield flagged 978 (92.8 %) and quoted the exact attack sentence in 952 (90.3 %). The base model flagged all 1,054 but quoted the attack in none. On the same 17 tool outputs with the attack replaced by an ordinary sentence (a control we added, since the benchmark has no benign cases), Qwen Shield flagged 0 and the base model 15. One limit: InjecAgent's tool outputs are single-line JSON, so our sentence-level sanitizer usually withholds the whole output instead of only the attack (the rest was kept in 94 of the 978); removing just the attacked JSON field is the next step. This measures the shield's assessment and removal, not InjecAgent's full agent score. Results: `backend/benchmarks/results/injecagent-bf16.json`.
 
+**Against an existing detector.** The widely used open-source classifier [ProtectAI DeBERTa v2](https://huggingface.co/protectai/deberta-v3-base-prompt-injection-v2) (Apache-2.0, given the untrusted content in 512-token windows, its intended use) was run on the same tests:
+
+| Same tests | ProtectAI DeBERTa v2 | **Qwen Shield** |
+|---|---|---|
+| Our 344 held-out documents: attacks caught | 26.3 % (59 / 224) | **99.1 %** (222 / 224) |
+| Our 344 held-out documents: false alarms | 22.5 % (27 / 120) | **0.8 %** (1 / 120) |
+| InjecAgent: attacks caught | 65.4 % (689 / 1,054) | **92.8 %** (978 / 1,054) |
+| InjecAgent control: false alarms | 4 / 17 | **0 / 17** |
+| Quotes the exact attack sentence | no (a classifier) | **yes** (98.2 % / 90.3 %) |
+
+It catches blunt overrides ("ignore all previous instructions") but misses attacks written as ordinary business text, like the supplier-quote example above. Results: `backend/benchmarks/results/baseline-protectai-deberta-v2.json`.
+
 ### End to end, with a real agent
 
 The agent is a larger Qwen model running locally; the shield is Qwen3-1.7B. Attack families: A, an action the user never
@@ -152,17 +164,17 @@ The laptop was in normal use during the run (browser and other services open).
 
 | Machine | Attacks caught | False alarms | Right target | Evidence found | Median latency | p90 | Output speed | Ollama RAM |
 |---|---|---|---|---|---|---|---|---|
-| **HP EliteBook 840 G8**: Intel Core i5-1135G7 (4 cores / 8 threads), 16 GB RAM, Intel Iris Xe (unused), Ubuntu 26.04, Ollama 0.32.1 | 51 / 52 | **0 / 28** | 41 / 51 | 47 / 51 | 19.8 s | 34.1 s | 12.5 tok/s | 5.6 GB peak |
+| **Ordinary office laptop**: 11th-gen Intel Core i5 (4 cores / 8 threads), 16 GB RAM, integrated graphics (unused), Ubuntu, Ollama 0.32.1 | 51 / 52 | **0 / 28** | 41 / 51 | 47 / 51 | 19.8 s | 34.1 s | 12.5 tok/s | 5.6 GB peak |
 | Workstation CPU (Arm Cortex-X925), same script, for reference | 51 / 52 | 0 / 28 | 41 / 51 | 45 / 51 | 5.3 s | 7.0 s | 46 tok/s | – |
 
 The quantized model gives the same verdicts on a laptop CPU as on the workstation: the same single miss, no false alarms.
 Latency is dominated by writing the answer (about 215 tokens of JSON including the evidence sentences), not by reading the
 document, so a shorter evidence format is the clearest way to make it faster. Results:
-`backend/benchmarks/results/laptop-i5-1135g7-cpu.json`.
+`backend/benchmarks/results/laptop-i5-cpu.json`.
 
 ### The whole system on a laptop
 
-Agent (Qwen3-4B-Instruct-2507 Q4_K_M) and shield (Qwen Shield Q4_K_M) both on the HP EliteBook's CPU through Ollama, 10
+Agent (Qwen3-4B-Instruct-2507 Q4_K_M) and shield (Qwen Shield Q4_K_M) both on the same laptop's CPU through Ollama, 10
 held-out scenarios (6 attacks, 4 benign) one at a time, everything else as above:
 
 | Attacks succeeded | Tasks done | False positives | Median time per task | Slowest task | Shield check (median) | RAM for both models |
@@ -235,6 +247,7 @@ python -m training.export --base <Qwen3-1.7B> --adapter ../artifacts/adapters/sh
 python -m training.to_gguf --model ../artifacts/merged/qwen-shield-1.7b --quant Q4_K_M --ollama qwen-shield:1.7b
 python -m benchmarks.assess_eval --models qwen3-1.7b,qwen-shield --split test --label shield-v1
 python -m benchmarks.injecagent_eval --data <InjecAgent data folder> --models qwen3-1.7b,qwen-shield --label bf16
+python -m benchmarks.detector_baseline --model <ProtectAI DeBERTa v2 folder> --injecagent <InjecAgent data folder>
 python -m benchmarks.run --scenarios benchmarks/scenarios/test.json --modes none,rules,full --label test-shield-v1
 pytest tests
 ```

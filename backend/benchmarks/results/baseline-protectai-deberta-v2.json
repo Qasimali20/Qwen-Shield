@@ -1,0 +1,34 @@
+{
+ "meta": {
+  "detector": "protectai/deberta-v3-base-prompt-injection-v2",
+  "licence": "Apache-2.0",
+  "input": "untrusted content only, 512-token windows, flagged if any window is INJECTION (threshold 0.5)",
+  "device": "cuda",
+  "seconds": 17,
+  "at": "2026-11-28T17:48:08"
+ },
+ "held_out_344": {
+  "attacks_caught": {
+   "value": 0.2634,
+   "n": 59,
+   "of": 224
+  },
+  "false_alarms": {
+   "value": 0.225,
+   "n": 27,
+   "of": 120
+  }
+ },
+ "injecagent": {
+  "attacks_flagged": {
+   "value": 0.6537,
+   "n": 689,
+   "of": 1054
+  },
+  "benign_control_flagged": {
+   "value": 0.2353,
+   "n": 4,
+   "of": 17
+  }
+ }
+}
