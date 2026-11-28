@@ -1,14 +1,17 @@
-"""An existing open-source detector on the same tests: protectai/deberta-v3-base-prompt-injection-v2 (Apache-2.0).
+"""Existing open-source detectors on the same tests, e.g. protectai/deberta-v3-base-prompt-injection-v2 (Apache-2.0)
+and deepset/deberta-v3-base-injection (MIT).
 
     hf download protectai/deberta-v3-base-prompt-injection-v2 config.json model.safetensors tokenizer.json \
         tokenizer_config.json special_tokens_map.json added_tokens.json spm.model --local-dir <folder>
-    python -m benchmarks.detector_baseline --model <folder> --injecagent <InjecAgent data folder>
+    python -m benchmarks.detector_baseline --model <folder> --name protectai-deberta-v2 --detector <hub id> \
+        --injecagent <InjecAgent data folder> --bipia <BIPIA data folder>
 
 It is a text classifier (SAFE / INJECTION), so it is given what it was built for: the untrusted content alone, split
 into windows of its 512-token limit, flagged if any window scores INJECTION at the model's default 0.5 threshold. It
 cannot name the target or quote the attack sentence, so only detection and false alarms are compared:
   - our 344 held-out documents (data/assess/test.jsonl), the same split as Qwen Shield's numbers;
-  - InjecAgent's 1,054 attacks and the same 17-case benign control used for Qwen Shield."""
+  - InjecAgent's 1,054 attacks and the same 17-case benign control used for Qwen Shield;
+  - BIPIA's 750 attacked emails and 50 untouched emails (benchmarks/bipia_eval.py)."""
 from __future__ import annotations
 
 import argparse
@@ -19,6 +22,7 @@ from pathlib import Path
 import torch
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
+from benchmarks.bipia_eval import load as load_bipia
 from benchmarks.injecagent_eval import load as load_injecagent
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -56,6 +60,9 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", required=True)
     ap.add_argument("--injecagent", required=True)
+    ap.add_argument("--bipia", required=True)
+    ap.add_argument("--name", required=True, help="results file: baseline-<name>.json")
+    ap.add_argument("--detector", required=True, help="hub id, recorded in the results")
     ap.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     a = ap.parse_args()
     det, t0 = Detector(a.model, a.device), time.time()
@@ -72,11 +79,19 @@ def main() -> None:
     ctl = [x for r, x in zip(inj, f) if not r["attack"]]
     injecagent = {"attacks_flagged": rate(sum(att), len(att)), "benign_control_flagged": rate(sum(ctl), len(ctl))}
 
-    out = {"meta": {"detector": "protectai/deberta-v3-base-prompt-injection-v2", "licence": "Apache-2.0",
+    bip = load_bipia(Path(a.bipia))
+    f = det.flags([r["content"] for r in bip])
+    att = [x for r, x in zip(bip, f) if r["attack"]]
+    ben = [x for r, x in zip(bip, f) if not r["attack"]]
+    bipia = {"attacks_flagged": rate(sum(att), len(att)), "benign_flagged": rate(sum(ben), len(ben)),
+             "by_category": {k: rate(sum(x for r, x in zip(bip, f) if r["kind"] == k), sum(r["kind"] == k for r in bip))
+                             for k in dict.fromkeys(r["kind"] for r in bip if r["attack"])}}
+
+    out = {"meta": {"detector": a.detector,
                     "input": "untrusted content only, 512-token windows, flagged if any window is INJECTION (threshold 0.5)",
                     "device": a.device, "seconds": round(time.time() - t0), "at": time.strftime("%Y-%m-%dT%H:%M:%S")},
-           "held_out_344": held_out, "injecagent": injecagent}
-    p = ROOT / "backend" / "benchmarks" / "results" / "baseline-protectai-deberta-v2.json"
+           "held_out_344": held_out, "injecagent": injecagent, "bipia": bipia}
+    p = ROOT / "backend" / "benchmarks" / "results" / f"baseline-{a.name}.json"
     p.write_text(json.dumps(out, indent=1))
     print(json.dumps(out, indent=1))
 

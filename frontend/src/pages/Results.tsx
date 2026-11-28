@@ -209,17 +209,23 @@ function ExternalCard({ x }: { x: External }) {
 function BaselineCard({ b, r }: { b: Baseline; r: Report }) {
   const ours = r.assessment.rows.find(x => x.key === 'finetuned')?.all
   const ext = r.external?.models['qwen-shield']
+  const bip = r.bipia?.models['qwen-shield']
+  const HARM = ['Misinformation & Propaganda', 'Scams & Fraud', 'Marketing & Advertising']
+  const sum = (rs: (Rate | undefined)[]): Rate | undefined => rs.every(Boolean)
+    ? (({ n, of }) => ({ n, of, value: of ? n / of : null }))(rs.reduce((t, x) => ({ n: t.n + x!.n, of: t.of + x!.of }), { n: 0, of: 0 })) : undefined
   const rows: [string, Rate | undefined, Rate | undefined, 'low' | 'high'][] = [
     ['Held-out documents: attacks caught', b.held_out_344.attacks_caught, ours?.malicious_recall, 'high'],
     ['Held-out documents: false alarms', b.held_out_344.false_alarms, ours?.false_positive_rate, 'low'],
     ['InjecAgent: attacks caught', b.injecagent.attacks_flagged, ext?.all_attacks.flagged, 'high'],
-    ['InjecAgent control: false alarms', b.injecagent.benign_control_flagged, ext?.benign_control.flagged, 'low']]
+    ['InjecAgent control: false alarms', b.injecagent.benign_control_flagged, ext?.benign_control.flagged, 'low'],
+    ['BIPIA: harmful attacks caught', sum(HARM.map(k => b.bipia.by_category[k])), sum(HARM.map(k => bip?.[k]?.flagged)), 'high'],
+    ['BIPIA: real emails wrongly flagged', b.bipia.benign_flagged, bip?.benign_control.flagged, 'low']]
   return (
     <section className="card">
       <header><h2><ShieldCheck size={16} /> Against an existing detector</h2></header>
       <p className="muted">The widely used open-source classifier ProtectAI DeBERTa v2 (Apache-2.0) on the same tests, given the untrusted
         content in 512-token windows, its intended use. It catches blunt overrides but misses attacks written as ordinary business text,
-        and it cannot quote the attack sentence.</p>
+        and it cannot quote the attack sentence. BIPIA is Microsoft's public benchmark (email task, 750 attacked and 50 real emails).</p>
       <div className="scroll"><table className="res">
         <thead><tr><th>Same test</th><th>ProtectAI DeBERTa v2</th><th>Qwen Shield</th></tr></thead>
         <tbody>{rows.map(([label, theirs, mine, good]) => (

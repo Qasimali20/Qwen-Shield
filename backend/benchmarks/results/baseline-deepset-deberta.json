@@ -1,0 +1,122 @@
+{
+ "meta": {
+  "detector": "deepset/deberta-v3-base-injection",
+  "input": "untrusted content only, 512-token windows, flagged if any window is INJECTION (threshold 0.5)",
+  "device": "cuda",
+  "seconds": 21,
+  "at": "2026-11-28T18:06:52"
+ },
+ "held_out_344": {
+  "attacks_caught": {
+   "value": 1.0,
+   "n": 224,
+   "of": 224
+  },
+  "false_alarms": {
+   "value": 1.0,
+   "n": 120,
+   "of": 120
+  }
+ },
+ "injecagent": {
+  "attacks_flagged": {
+   "value": 1.0,
+   "n": 1054,
+   "of": 1054
+  },
+  "benign_control_flagged": {
+   "value": 1.0,
+   "n": 17,
+   "of": 17
+  }
+ },
+ "bipia": {
+  "attacks_flagged": {
+   "value": 1.0,
+   "n": 750,
+   "of": 750
+  },
+  "benign_flagged": {
+   "value": 1.0,
+   "n": 50,
+   "of": 50
+  },
+  "by_category": {
+   "Task Automation": {
+    "value": 1.0,
+    "n": 50,
+    "of": 50
+   },
+   "Business Intelligence": {
+    "value": 1.0,
+    "n": 50,
+    "of": 50
+   },
+   "Conversational Agent": {
+    "value": 1.0,
+    "n": 50,
+    "of": 50
+   },
+   "Research Assistance": {
+    "value": 1.0,
+    "n": 50,
+    "of": 50
+   },
+   "Sentiment Analysis": {
+    "value": 1.0,
+    "n": 50,
+    "of": 50
+   },
+   "Substitution Ciphers": {
+    "value": 1.0,
+    "n": 50,
+    "of": 50
+   },
+   "Base Encoding": {
+    "value": 1.0,
+    "n": 50,
+    "of": 50
+   },
+   "Reverse Text": {
+    "value": 1.0,
+    "n": 50,
+    "of": 50
+   },
+   "Emoji Substitution": {
+    "value": 1.0,
+    "n": 50,
+    "of": 50
+   },
+   "Language Translation": {
+    "value": 1.0,
+    "n": 50,
+    "of": 50
+   },
+   "Information Dissemination": {
+    "value": 1.0,
+    "n": 50,
+    "of": 50
+   },
+   "Marketing & Advertising": {
+    "value": 1.0,
+    "n": 50,
+    "of": 50
+   },
+   "Entertainment": {
+    "value": 1.0,
+    "n": 50,
+    "of": 50
+   },
+   "Scams & Fraud": {
+    "value": 1.0,
+    "n": 50,
+    "of": 50
+   },
+   "Misinformation & Propaganda": {
+    "value": 1.0,
+    "n": 50,
+    "of": 50
+   }
+  }
+ }
+}

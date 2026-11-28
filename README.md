@@ -109,17 +109,20 @@ On the **unseen injection styles** the fine-tuned model catches 98.0 % (Q4_K_M: 
 
 **On a public benchmark: InjecAgent.** [InjecAgent](https://github.com/uiuc-kang-lab/InjecAgent) (Zhan et al., ACL Findings 2024, MIT licence) hides an attacker's instruction inside what a tool returns to an agent: 1,054 cases over 17 user tasks, none used in training or tuning. Qwen Shield flagged 978 (92.8 %) and quoted the exact attack sentence in 952 (90.3 %). The base model flagged all 1,054 but quoted the attack in none. On the same 17 tool outputs with the attack replaced by an ordinary sentence (a control we added, since the benchmark has no benign cases), Qwen Shield flagged 0 and the base model 15. One limit: InjecAgent's tool outputs are single-line JSON, so our sentence-level sanitizer usually withholds the whole output instead of only the attack (the rest was kept in 94 of the 978); removing just the attacked JSON field is the next step. This measures the shield's assessment and removal, not InjecAgent's full agent score. Results: `backend/benchmarks/results/injecagent-bf16.json`.
 
-**Against an existing detector.** The widely used open-source classifier [ProtectAI DeBERTa v2](https://huggingface.co/protectai/deberta-v3-base-prompt-injection-v2) (Apache-2.0, given the untrusted content in 512-token windows, its intended use) was run on the same tests:
+**Against other approaches, on the same tests.** Two widely used open-source prompt-injection classifiers ([ProtectAI DeBERTa v2](https://huggingface.co/protectai/deberta-v3-base-prompt-injection-v2), Apache-2.0; [deepset DeBERTa](https://huggingface.co/deepset/deberta-v3-base-injection), MIT; both given the untrusted content in 512-token windows), the untrained base model, and a 20x larger local Qwen model with the same prompt and no fine-tuning. A second public benchmark, [BIPIA](https://github.com/microsoft/BIPIA) (Microsoft, KDD 2025, MIT), email task: 750 attacked emails (every email with one attack from each of its 15 categories) and the 50 untouched real emails.
 
-| Same tests | ProtectAI DeBERTa v2 | **Qwen Shield** |
-|---|---|---|
-| Our 344 held-out documents: attacks caught | 26.3 % (59 / 224) | **99.1 %** (222 / 224) |
-| Our 344 held-out documents: false alarms | 22.5 % (27 / 120) | **0.8 %** (1 / 120) |
-| InjecAgent: attacks caught | 65.4 % (689 / 1,054) | **92.8 %** (978 / 1,054) |
-| InjecAgent control: false alarms | 4 / 17 | **0 / 17** |
-| Quotes the exact attack sentence | no (a classifier) | **yes** (98.2 % / 90.3 %) |
+| Same tests | ProtectAI DeBERTa v2 | deepset DeBERTa | Base Qwen3-1.7B | 20x larger Qwen, no fine-tuning | **Qwen Shield 1.7B** |
+|---|---|---|---|---|---|
+| Our 344 held-out documents: attacks caught | 26.3 % | 100 % | 99.6 % | – | **99.1 %** |
+| Our 344 held-out documents: false alarms | 22.5 % | 100 % | 96.7 % | – | **0.8 %** |
+| InjecAgent: attacks caught (1,054) | 65.4 % | 100 % | 100 % | 53.9 % | **92.8 %** |
+| InjecAgent control: false alarms (17) | 4 | 17 | 15 | 0 | **0** |
+| BIPIA: harmful attacks caught (scams, misinformation, ads; 150) | 57.3 % | 100 % | 100 % | 78.7 % | **82.7 %** |
+| BIPIA: any inserted instruction flagged (750) | 57.7 % | 100 % | 99.9 % | 37.9 % | 27.1 % |
+| BIPIA: real emails wrongly flagged (50) | **62 %** | 100 % | 100 % | 0 % | **0 %** |
+| Quotes the exact attack sentence (InjecAgent) | – | – | 0 % | 0 % | **90.3 %** |
 
-It catches blunt overrides ("ignore all previous instructions") but misses attacks written as ordinary business text, like the supplier-quote example above. Results: `backend/benchmarks/results/baseline-protectai-deberta-v2.json`.
+The classifiers either miss attacks written as ordinary business text (ProtectAI flags BIPIA's real emails more often than its attacked ones) or flag everything (deepset). **Where Qwen Shield is weak:** BIPIA counts any inserted instruction as an attack, including harmless ones such as "use emojis in your answer" or "analyse electric car sales". Qwen Shield was trained to flag instructions that would harm the user (send, leak or export data, change what the user is told, file harmful tickets) and lets most harmless off-task instructions through: 92-96 % caught for scams and misinformation, 2-10 % for emoji, translation or analysis requests. The 20x larger model without fine-tuning draws the same line. Flagging every instruction is what makes the other models block real emails. Results: `backend/benchmarks/results/` (`baseline-*.json`, `injecagent-*.json`, `bipia-*.json`).
 
 ### End to end, with a real agent
 
@@ -247,7 +250,8 @@ python -m training.export --base <Qwen3-1.7B> --adapter ../artifacts/adapters/sh
 python -m training.to_gguf --model ../artifacts/merged/qwen-shield-1.7b --quant Q4_K_M --ollama qwen-shield:1.7b
 python -m benchmarks.assess_eval --models qwen3-1.7b,qwen-shield --split test --label shield-v1
 python -m benchmarks.injecagent_eval --data <InjecAgent data folder> --models qwen3-1.7b,qwen-shield --label bf16
-python -m benchmarks.detector_baseline --model <ProtectAI DeBERTa v2 folder> --injecagent <InjecAgent data folder>
+python -m benchmarks.bipia_eval --data <BIPIA email data folder> --models qwen3-1.7b,qwen-shield --label bf16
+python -m benchmarks.detector_baseline --model <detector folder> --name <name> --detector <hub id> --injecagent <InjecAgent folder> --bipia <BIPIA folder>
 python -m benchmarks.run --scenarios benchmarks/scenarios/test.json --modes none,rules,full --label test-shield-v1
 pytest tests
 ```

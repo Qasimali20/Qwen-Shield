@@ -44,11 +44,13 @@ export type Report = {
   training: Training | null
   external: External | null
   baseline: Baseline | null
+  bipia: { models: Record<string, Record<string, { flagged: Rate }>> } | null
 }
 export type Baseline = {
   meta: { detector: string }
   held_out_344: { attacks_caught: Rate; false_alarms: Rate }
   injecagent: { attacks_flagged: Rate; benign_control_flagged: Rate }
+  bipia: { attacks_flagged: Rate; benign_flagged: Rate; by_category: Record<string, Rate> }
 }
 export type External = {
   meta: { benchmark: string; attacks: number; benign_control: number }
